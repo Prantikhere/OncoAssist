@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FileText, UploadCloud, History, Menu, Stethoscope } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import React from 'react';
 
@@ -62,6 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-72">
+              <SheetTitle className="sr-only">Main Menu</SheetTitle>
               <div className="flex items-center h-16 border-b px-6">
                 <Stethoscope className="h-8 w-8 text-primary" />
                 <h1 className="ml-2 text-xl font-bold text-primary font-headline">OncoAssist</h1>
