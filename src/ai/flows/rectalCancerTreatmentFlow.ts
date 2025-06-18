@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview Generates a Rectal Cancer treatment recommendation. (Simplified for now, can be expanded like ColonCancer)
+ * @fileOverview Generates a Rectal Cancer treatment recommendation. (Focuses on guideline availability)
  *
  * - diagnoseRectalCancer - A function that handles the Rectal Cancer diagnosis and recommendation process.
  * - RectalCancerTreatmentInput - The input type (defined in treatmentFlowTypes.ts).
@@ -17,23 +17,22 @@ import {
   type CancerTreatmentOutput 
 } from './treatmentFlowTypes';
 
-// Simplified prompt for Rectal Cancer, similar to Breast Cancer for now
-// Can be expanded with iterative logic like ColonCancerTreatmentFlow later.
 const rectalCancerPrompt = ai.definePrompt({
   name: 'rectalCancerGuidelineCheckPrompt',
   input: { schema: RectalCancerTreatmentInputSchema },
   output: { schema: CancerTreatmentOutputSchema },
   prompt: `You are an AI assistant for oncologists.
-Based on the following patient case details and the provided Clinical Guidelines Document Content for Rectal Cancer:
+The user has provided case details for Rectal Cancer and the content of a clinical guideline document.
 
-IF the 'guidelineDocumentContent' explicitly states 'No guideline document currently available for Rectal Cancer' OR if it is a generic placeholder and does not appear to contain specific, relevant guideline information for Rectal Cancer,
+Your primary task is to check the 'guidelineDocumentContent'.
+IF the 'guidelineDocumentContent' explicitly states 'No guideline document currently available for Rectal Cancer' OR if it is a generic placeholder (e.g., starts with 'Placeholder: No PDF uploaded...') AND it does not appear to contain specific, relevant guideline information for Rectal Cancer,
 THEN:
-  - The 'recommendation' field MUST state: "No specific guideline document is currently available for Rectal Cancer. Please upload relevant guidelines."
+  - The 'recommendation' field MUST state clearly: "No specific guideline document is currently available for Rectal Cancer to generate a treatment recommendation. Please upload the relevant NCCN (or equivalent) guidelines for Rectal Cancer."
   - The 'references' field MUST be "N/A".
-  - The 'noRecommendationReason' field MUST explain this.
-ELSE (relevant guideline content is provided):
-  - Generate a concise recommendation based SOLELY on this content and patient details.
-  - For 'references', state "References to be fully implemented based on specific guideline content." or extract key phrases.
+  - The 'noRecommendationReason' field MUST explain that the specific guidelines for Rectal Cancer were not provided.
+ELSE (if relevant guideline content seems to be provided, even if simulated but specific to Rectal Cancer):
+  - Generate a concise, preliminary recommendation based SOLELY on this provided content and the patient's case details.
+  - For 'references', state "References to be fully implemented based on specific guideline content." or extract key phrases if obvious.
   - 'noRecommendationReason' can be omitted or state "Recommendation based on simulated guidelines."
 
 Clinical Guidelines Document Content:

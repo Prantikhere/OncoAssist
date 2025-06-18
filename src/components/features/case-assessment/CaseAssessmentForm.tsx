@@ -45,7 +45,6 @@ const formSchema = z.object({
   stagingEvaluation: z.enum(['Completed', 'In Progress', 'Not Yet Started', 'Other'], { required_error: "Staging evaluation is required." }),
   diseaseExtent: z.enum(['Localized', 'Regional', 'Metastatic', 'Other'], { required_error: "Disease extent is required." }),
   
-  // Fields that will have dynamic options
   surgicalProcedure: z.string({ required_error: "Surgical procedure is required." }).min(1,"Surgical procedure is required."),
   lymphNodeAssessment: z.string({ required_error: "Lymph node assessment is required." }).min(1, "Lymph node assessment is required."),
   tumorType: z.string({ required_error: "Tumor type is required." }).min(1, "Tumor type is required."),
@@ -92,8 +91,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
   const watchedNStage = form.watch("nStage");
 
   useEffect(() => {
-    // Reset dependent fields when cancerType changes
-    if (watchedCancerType) { // only reset if a cancer type is selected, not on initial undefined
+    if (watchedCancerType) {
         form.resetField("tumorType", { defaultValue: undefined });
         form.resetField("grade", { defaultValue: undefined });
         form.resetField("surgicalProcedure", { defaultValue: undefined });
@@ -102,6 +100,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
         form.resetField("nStage", { defaultValue: undefined });
         form.resetField("vascularLymphaticInvasion", { defaultValue: false });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchedCancerType, form.resetField]);
 
 
@@ -116,15 +115,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     setCurrentFormInputForDisplay(null);
 
     let guidelineDocumentContent: string;
-    // Ensure all fields are correctly typed for AllTreatmentInput
-    const submissionValues = {
-        ...values,
-        // The following fields are now string, ensure they are correctly passed
-        // Zod schema for AllTreatmentInput in flows expects specific enum like values for T/N stage
-        // This might require casting or ensuring string values match enum definitions if strictness is high in AI flow.
-        // For now, assuming string values from select are compatible.
-    };
-
+    const submissionValues = { ...values };
 
     let submissionData: AllTreatmentInput;
     switch (values.cancerType) {
@@ -133,7 +124,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
         submissionData = { ...submissionValues, cancerType: 'Colon Cancer', guidelineDocumentContent };
         break;
       case 'Rectal Cancer':
-        guidelineDocumentContent = `Simulated NCCN (or equivalent) guideline content for Rectal Cancer is being used. Base recommendation strictly on this content. If this simulated content is insufficient, state so. Focus on identifying direct quotes or section references if possible.`;
+        guidelineDocumentContent = `No guideline document currently available for Rectal Cancer. State that a recommendation cannot be provided due to lack of specific guidelines for Rectal Cancer.`;
         submissionData = { ...submissionValues, cancerType: 'Rectal Cancer', guidelineDocumentContent };
         break;
       case 'Breast Cancer':
@@ -143,7 +134,6 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
       case 'Other':
       default:
         guidelineDocumentContent = `Placeholder: No specific PDF uploaded or content not extracted for 'Other' cancer types. The AI should state that it cannot provide a recommendation without a relevant guideline document for the specified 'Other' cancer type.`;
-        // Type assertion to ensure it matches one of the union types in AllTreatmentInput
         submissionData = { ...submissionValues, cancerType: 'Other', guidelineDocumentContent } as AllTreatmentInput; 
         break;
     }
@@ -166,7 +156,8 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
           result = await diagnoseOtherCancer(submissionData as Extract<AllTreatmentInput, { cancerType: 'Other' }>);
           break;
         default:
-          const exhaustiveCheck: never = submissionData; // Check if all cases covered
+          // This should be unreachable if form validation and switch cases are exhaustive
+          const exhaustiveCheck: never = submissionData; 
           throw new Error(`Unsupported cancer type: ${(exhaustiveCheck as any).cancerType}`);
       }
       
@@ -176,7 +167,8 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
         toast({
           title: "Guideline Information",
           description: result.noRecommendationReason,
-          variant: "default",
+          variant: result.recommendation.startsWith("Cannot provide") || result.recommendation.startsWith("No specific guideline document") ? "destructive" : "default",
+          duration: 5000,
         });
       } else if (result.recommendation) {
         toast({
@@ -252,9 +244,8 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
             if (fieldName === 'nStageOptions') return formOptions.otherCancerNStageOptions;
             break;
     }
-    return []; // Fallback
+    return [];
   };
-
 
   const renderSelectField = (
     fieldName: keyof CaseFormValues, 
@@ -328,7 +319,6 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     />
   );
 
-
   return (
     <div className="space-y-8">
       <Card className="shadow-lg">
@@ -345,7 +335,6 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
                 {renderSelectField("stagingEvaluation", "Staging Evaluation", formOptions.stagingEvaluationOptions, "Select staging status")}
                 {renderSelectField("diseaseExtent", "Disease Extent", formOptions.diseaseExtentOptions, "Select disease extent")}
                 {renderSelectField("postSurgeryAnalysis", "Post-Surgery Analysis", formOptions.postSurgeryAnalysisOptions, "Select post-surgery analysis")}
-                 {/* Generic fields end */}
               </div>
               
               <Separator className="my-8" />
@@ -355,9 +344,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
                 {renderStringSelectField("lymphNodeAssessment", "Lymph Node Assessment", getDynamicOptions("lymphNodeAssessmentOptions"), "Select lymph node assessment")}
               </div>
 
-
               <Separator className="my-8" />
-
               <h3 className="text-xl font-semibold font-headline text-foreground/90">Report Findings</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-md bg-muted/20">
                 {renderStringSelectField("tumorType", "Tumor Type", getDynamicOptions("tumorTypeOptions"), "Select tumor type")}
