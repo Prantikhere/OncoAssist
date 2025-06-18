@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -45,8 +46,6 @@ const formSchema = z.object({
   vascularLymphaticInvasion: z.boolean().optional(),
 });
 
-// This type will be inferred from formSchema by react-hook-form
-// but explicitly defining it for clarity with AI flow.
 type FormValues = GenerateTreatmentRecommendationInput;
 
 interface CaseAssessmentFormProps {
@@ -95,7 +94,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
       });
       addAuditEntry({
         ...values,
-        id: new Date().toISOString(), // Simple ID for demo
+        id: new Date().toISOString(), 
         timestamp: new Date(),
         recommendation: result.recommendation,
       });
