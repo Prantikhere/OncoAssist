@@ -197,55 +197,54 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
       setIsLoading(false);
     }
   }
+  
+  const getDynamicOptions = (fieldName: string): { value: string; label: string; disabled?: boolean }[] => {
+    const cancerDependentFields = [
+      "tumorTypeOptions", "gradeOptions", "surgicalProcedureOptions",
+      "lymphNodeAssessmentOptions", "tStageOptions", "nStageOptions"
+    ];
 
-  const getDynamicOptions = (fieldName: keyof typeof formOptions.defaultTumorTypeOptions | string) => {
-    if (!watchedCancerType) {
-        switch (fieldName) {
-            case 'tumorTypeOptions': return formOptions.defaultTumorTypeOptions;
-            case 'gradeOptions': return formOptions.defaultGradeOptions;
-            case 'surgicalProcedureOptions': return formOptions.defaultSurgicalProcedureOptions;
-            case 'lymphNodeAssessmentOptions': return formOptions.defaultLymphNodeAssessmentOptions;
-            case 'tStageOptions': return formOptions.defaultTStageOptions;
-            case 'nStageOptions': return formOptions.defaultNStageOptions;
-            default: return [];
-        }
+    if (!watchedCancerType && cancerDependentFields.includes(fieldName)) {
+      return []; // Return empty options if cancer type not selected for dependent fields
     }
+
     switch (watchedCancerType) {
-        case 'Colon Cancer':
-            if (fieldName === 'tumorTypeOptions') return formOptions.colonTumorTypeOptions;
-            if (fieldName === 'gradeOptions') return formOptions.colonGradeOptions;
-            if (fieldName === 'surgicalProcedureOptions') return formOptions.colonSurgicalProcedureOptions;
-            if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.colonLymphNodeAssessmentOptions;
-            if (fieldName === 'tStageOptions') return formOptions.colonTStageOptions;
-            if (fieldName === 'nStageOptions') return formOptions.colonNStageOptions;
-            break;
-        case 'Rectal Cancer':
-            if (fieldName === 'tumorTypeOptions') return formOptions.rectalTumorTypeOptions;
-            if (fieldName === 'gradeOptions') return formOptions.rectalGradeOptions;
-            if (fieldName === 'surgicalProcedureOptions') return formOptions.rectalSurgicalProcedureOptions;
-            if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.rectalLymphNodeAssessmentOptions;
-            if (fieldName === 'tStageOptions') return formOptions.rectalTStageOptions;
-            if (fieldName === 'nStageOptions') return formOptions.rectalNStageOptions;
-            break;
-        case 'Breast Cancer':
-            if (fieldName === 'tumorTypeOptions') return formOptions.breastTumorTypeOptions;
-            if (fieldName === 'gradeOptions') return formOptions.breastGradeOptions;
-            if (fieldName === 'surgicalProcedureOptions') return formOptions.breastSurgicalProcedureOptions;
-            if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.breastLymphNodeAssessmentOptions;
-            if (fieldName === 'tStageOptions') return formOptions.breastTStageOptions;
-            if (fieldName === 'nStageOptions') return formOptions.breastNStageOptions;
-            break;
-        case 'Other':
-            if (fieldName === 'tumorTypeOptions') return formOptions.otherCancerTumorTypeOptions;
-            if (fieldName === 'gradeOptions') return formOptions.otherCancerGradeOptions;
-            if (fieldName === 'surgicalProcedureOptions') return formOptions.otherCancerSurgicalProcedureOptions;
-            if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.otherCancerLymphNodeAssessmentOptions;
-            if (fieldName === 'tStageOptions') return formOptions.otherCancerTStageOptions;
-            if (fieldName === 'nStageOptions') return formOptions.otherCancerNStageOptions;
-            break;
+      case 'Colon Cancer':
+        if (fieldName === 'tumorTypeOptions') return formOptions.colonTumorTypeOptions;
+        if (fieldName === 'gradeOptions') return formOptions.colonGradeOptions;
+        if (fieldName === 'surgicalProcedureOptions') return formOptions.colonSurgicalProcedureOptions;
+        if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.colonLymphNodeAssessmentOptions;
+        if (fieldName === 'tStageOptions') return formOptions.colonTStageOptions;
+        if (fieldName === 'nStageOptions') return formOptions.colonNStageOptions;
+        break;
+      case 'Rectal Cancer':
+        if (fieldName === 'tumorTypeOptions') return formOptions.rectalTumorTypeOptions;
+        if (fieldName === 'gradeOptions') return formOptions.rectalGradeOptions;
+        if (fieldName === 'surgicalProcedureOptions') return formOptions.rectalSurgicalProcedureOptions;
+        if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.rectalLymphNodeAssessmentOptions;
+        if (fieldName === 'tStageOptions') return formOptions.rectalTStageOptions;
+        if (fieldName === 'nStageOptions') return formOptions.rectalNStageOptions;
+        break;
+      case 'Breast Cancer':
+        if (fieldName === 'tumorTypeOptions') return formOptions.breastTumorTypeOptions;
+        if (fieldName === 'gradeOptions') return formOptions.breastGradeOptions;
+        if (fieldName === 'surgicalProcedureOptions') return formOptions.breastSurgicalProcedureOptions;
+        if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.breastLymphNodeAssessmentOptions;
+        if (fieldName === 'tStageOptions') return formOptions.breastTStageOptions;
+        if (fieldName === 'nStageOptions') return formOptions.breastNStageOptions;
+        break;
+      case 'Other':
+        if (fieldName === 'tumorTypeOptions') return formOptions.otherCancerTumorTypeOptions;
+        if (fieldName === 'gradeOptions') return formOptions.otherCancerGradeOptions;
+        if (fieldName === 'surgicalProcedureOptions') return formOptions.otherCancerSurgicalProcedureOptions;
+        if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.otherCancerLymphNodeAssessmentOptions;
+        if (fieldName === 'tStageOptions') return formOptions.otherCancerTStageOptions;
+        if (fieldName === 'nStageOptions') return formOptions.otherCancerNStageOptions;
+        break;
     }
-    return [];
+    return []; // Default to empty array if no match or cancer type not set for a dependent field
   };
+
 
   const renderSelectField = (
     fieldName: keyof CaseFormValues, 
@@ -394,3 +393,5 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     </div>
   );
 }
+
+    

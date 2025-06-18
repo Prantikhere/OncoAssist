@@ -39,19 +39,6 @@ export const booleanOptions = [
   { value: 'false', label: 'No' },
 ];
 
-// --- Default/Placeholder Options ---
-const defaultPlaceholderOption = (fieldName: string) => ([
-  { value: '', label: `Select Cancer Type to see ${fieldName} options`, disabled: true }
-]);
-
-export const defaultTumorTypeOptions = defaultPlaceholderOption('Tumor Type');
-export const defaultGradeOptions = defaultPlaceholderOption('Grade');
-export const defaultSurgicalProcedureOptions = defaultPlaceholderOption('Surgical Procedure');
-export const defaultLymphNodeAssessmentOptions = defaultPlaceholderOption('Lymph Node Assessment');
-export const defaultTStageOptions = defaultPlaceholderOption('T Stage');
-export const defaultNStageOptions = defaultPlaceholderOption('N Stage');
-
-
 // --- Colon Cancer Specific Options ---
 export const colonTumorTypeOptions = [
   { value: 'Adenocarcinoma', label: 'Adenocarcinoma' },
@@ -262,3 +249,5 @@ export const otherCancerNStageOptions = [ // Generic N staging
   { value: 'NX', label: 'NX (Regional lymph nodes cannot be assessed)'},
   { value: 'Not Applicable', label: 'Not Applicable (e.g., hematologic)' },
 ];
+
+    
