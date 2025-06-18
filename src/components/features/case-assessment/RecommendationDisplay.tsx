@@ -4,78 +4,122 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download } from "lucide-react";
-import type { GenerateTreatmentRecommendationInput, GenerateTreatmentRecommendationOutput } from "@/ai/flows/generate-treatment-recommendation";
+import type { AllTreatmentInput, CancerTreatmentOutput } from "@/ai/flows"; // Assuming index.ts in flows
 import jsPDF from 'jspdf';
+import { Separator } from "@/components/ui/separator";
 
 interface RecommendationDisplayProps {
-  formData: GenerateTreatmentRecommendationInput | null;
-  recommendation: GenerateTreatmentRecommendationOutput | null;
+  formData: AllTreatmentInput | null; // formData now reflects AllTreatmentInput
+  recommendationOutput: CancerTreatmentOutput | null;
 }
 
-export function RecommendationDisplay({ formData, recommendation }: RecommendationDisplayProps) {
-  if (!recommendation || !formData) {
+export function RecommendationDisplay({ formData, recommendationOutput }: RecommendationDisplayProps) {
+  if (!recommendationOutput || !formData) {
     return null;
   }
 
-  const handleDownloadReport = () => {
-    if (!formData || !recommendation) return;
+  const { recommendation, references, noRecommendationReason } = recommendationOutput;
 
-    let reportContent = `OncoAssist Treatment Recommendation Report\n`;
-    reportContent += `Generated: ${new Date().toLocaleString()}\n\n`;
-    reportContent += `CASE DETAILS:\n`;
-    reportContent += `------------------------------------\n`;
-    reportContent += `Cancer Type: ${formData.cancerType}\n`;
-    reportContent += `Diagnostic Confirmation: ${formData.diagnosticConfirmation}\n`;
-    reportContent += `Staging Evaluation: ${formData.stagingEvaluation}\n`;
-    reportContent += `Disease Extent: ${formData.diseaseExtent}\n`;
-    reportContent += `Surgical Procedure: ${formData.surgicalProcedure}\n`;
-    reportContent += `Lymph Node Assessment: ${formData.lymphNodeAssessment}\n`;
-    reportContent += `Post-Surgery Analysis: ${formData.postSurgeryAnalysis}\n\n`;
-    reportContent += `REPORT FINDINGS:\n`;
-    reportContent += `Tumor Type: ${formData.tumorType}\n`;
-    reportContent += `Grade: ${formData.grade}\n`;
-    reportContent += `T Stage: ${formData.tStage}\n`;
-    reportContent += `N Stage: ${formData.nStage}\n`;
-    if (formData.tStage === 'T3' && formData.nStage === 'N0') {
-      reportContent += `Vascular/Lymphatic Invasion: ${formData.vascularLymphaticInvasion ? 'Yes' : 'No'}\n`;
-    }
-    reportContent += `\nRECOMMENDATION:\n`;
-    reportContent += `------------------------------------\n`;
-    reportContent += `${recommendation.recommendation}\n`;
+  const handleDownloadReport = () => {
+    if (!formData || !recommendationOutput) return;
 
     const doc = new jsPDF();
-    const lines = reportContent.split('\n');
-    let yPosition = 15; // Initial Y position for text
+    let yPosition = 15;
     const pageHeight = doc.internal.pageSize.height;
-    const bottomMargin = 15;
-    const lineHeight = 7; // Approximate line height, adjust as needed
+    const bottomMargin = 20;
+    const lineHeight = 7;
     const leftMargin = 10;
+    const contentWidth = doc.internal.pageSize.width - (leftMargin * 2);
 
-    doc.setFontSize(12);
-
-    lines.forEach(line => {
+    const addText = (text: string, isBold = false, isTitle = false) => {
       if (yPosition > pageHeight - bottomMargin) {
         doc.addPage();
-        yPosition = 15; // Reset Y position for new page
+        yPosition = 15;
       }
-      // jsPDF's text function can handle arrays for auto-wrapping, but here we split manually
-      // For more complex wrapping, `splitTextToSize` would be used.
-      const splitLine = doc.splitTextToSize(line, doc.internal.pageSize.width - (leftMargin * 2));
-      doc.text(splitLine, leftMargin, yPosition);
-      yPosition += (splitLine.length * lineHeight); 
-    });
+      doc.setFontSize(isTitle ? 16 : (isBold ? 12 : 10));
+      doc.setFont(undefined, isBold || isTitle ? 'bold' : 'normal');
+      const splitLines = doc.splitTextToSize(text, contentWidth);
+      doc.text(splitLines, leftMargin, yPosition);
+      yPosition += (splitLines.length * lineHeight);
+      if (isTitle || isBold) yPosition += lineHeight * 0.5; // Extra space after titles/bold sections
+    };
+    
+    addText(`OncoAssist Treatment Recommendation Report`, false, true);
+    addText(`Generated: ${new Date().toLocaleString()}`, false);
+    yPosition += lineHeight;
 
-    doc.save(`OncoAssist_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    addText(`CASE DETAILS:`, true);
+    addText(`Cancer Type: ${formData.cancerType}`);
+    addText(`Diagnostic Confirmation: ${formData.diagnosticConfirmation}`);
+    addText(`Staging Evaluation: ${formData.stagingEvaluation}`);
+    addText(`Disease Extent: ${formData.diseaseExtent}`);
+    addText(`Surgical Procedure: ${formData.surgicalProcedure}`);
+    addText(`Lymph Node Assessment: ${formData.lymphNodeAssessment}`);
+    addText(`Post-Surgery Analysis: ${formData.postSurgeryAnalysis}`);
+    yPosition += lineHeight * 0.5;
+
+    addText(`REPORT FINDINGS:`, true);
+    addText(`Tumor Type: ${formData.tumorType}`);
+    addText(`Grade: ${formData.grade}`);
+    addText(`T Stage: ${formData.tStage}`);
+    addText(`N Stage: ${formData.nStage}`);
+    if (formData.cancerType === 'Colon Cancer' || formData.cancerType === 'Rectal Cancer') {
+      if (formData.tStage === 'T3' && formData.nStage === 'N0') { // Condition already in form
+         addText(`Vascular/Lymphatic Invasion: ${formData.vascularLymphaticInvasion ? 'Yes' : 'No'}`);
+      }
+    } else if (formData.vascularLymphaticInvasion !== undefined) { // For other cancer types if field was shown
+        addText(`Vascular/Lymphatic Invasion: ${formData.vascularLymphaticInvasion ? 'Yes' : 'No'}`);
+    }
+    yPosition += lineHeight;
+
+    addText(`RECOMMENDATION:`, true);
+    if (noRecommendationReason) {
+      addText(`Note: ${noRecommendationReason}`);
+      yPosition += lineHeight * 0.5;
+    }
+    addText(recommendationOutput.recommendation || "No recommendation provided.");
+    yPosition += lineHeight;
+
+    if (references && references !== "N/A" && references !== "No specific references extracted.") {
+      addText(`SUPPORTING REFERENCES FROM GUIDELINE DOCUMENT:`, true);
+      addText(references);
+    } else if (references) {
+       addText(`Supporting References: ${references}`, false);
+    }
+    
+    doc.save(`OncoAssist_Report_${formData.cancerType.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   return (
     <Card className="mt-8 shadow-lg">
       <CardHeader>
         <CardTitle className="text-2xl font-headline text-primary">NCCN Guideline Based Recommendation</CardTitle>
-        <CardDescription>The following recommendation is based on the provided case details.</CardDescription>
+        <CardDescription>The following is based on the provided case details and (simulated) guideline document content.</CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="whitespace-pre-wrap text-foreground/90">{recommendation.recommendation}</p>
+        {noRecommendationReason && (
+          <div className="mb-4 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 rounded-md">
+            <p className="font-semibold">Important Note:</p>
+            <p>{noRecommendationReason}</p>
+          </div>
+        )}
+        <h4 className="font-semibold text-lg text-foreground/90 mb-2">Recommendation:</h4>
+        <p className="whitespace-pre-wrap text-foreground/90 mb-4">{recommendation}</p>
+        
+        {references && references !== "N/A" && references !== "No specific references extracted." && (
+          <>
+            <Separator className="my-4" />
+            <h4 className="font-semibold text-lg text-foreground/90 mb-2">Supporting References from Guideline Document:</h4>
+            <p className="whitespace-pre-wrap text-sm text-muted-foreground">{references}</p>
+          </>
+        )}
+         {(references === "N/A" || references === "No specific references extracted.") && (
+          <>
+            <Separator className="my-4" />
+            <p className="text-sm text-muted-foreground">Supporting References: {references}</p>
+          </>
+        )}
+
         <Button onClick={handleDownloadReport} className="mt-6 w-full sm:w-auto" variant="outline">
           <Download className="mr-2 h-4 w-4" />
           Download Report (PDF)

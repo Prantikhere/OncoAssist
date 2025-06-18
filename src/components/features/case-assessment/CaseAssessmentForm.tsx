@@ -24,29 +24,39 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { generateTreatmentRecommendation, type GenerateTreatmentRecommendationInput, type GenerateTreatmentRecommendationOutput } from "@/ai/flows/generate-treatment-recommendation";
 import * as formOptions from "@/config/formOptions";
 import React, { useState } from "react";
 import { RecommendationDisplay } from "./RecommendationDisplay";
 import type { AuditEntry } from "@/types";
 import { Loader2 } from "lucide-react";
 
+import { 
+  type AllTreatmentInput, 
+  type CancerTreatmentOutput,
+  // Import specific flow functions
+  diagnoseColonCancer,
+  diagnoseBreastCancer,
+  diagnoseRectalCancer,
+  diagnoseOtherCancer
+} from "@/ai/flows"; // Assuming an index.ts in flows for easier imports
+
 const formSchema = z.object({
-  cancerType: z.enum(['Colon Cancer', 'Rectal Cancer', 'Breast Cancer', 'Other']),
-  diagnosticConfirmation: z.enum(['Biopsy-Proven', 'Cytology-Proven', 'Imaging Suggestive', 'Other']),
-  stagingEvaluation: z.enum(['Completed', 'In Progress', 'Not Yet Started', 'Other']),
-  diseaseExtent: z.enum(['Localized', 'Regional', 'Metastatic', 'Other']),
-  surgicalProcedure: z.enum(['Includes nodal harvest', 'Excisional Biopsy', 'Lumpectomy', 'Mastectomy', 'Sentinel Lymph Node Biopsy (SLNB)', 'Axillary Lymph Node Dissection (ALND)', 'Other']),
-  lymphNodeAssessment: z.enum(['At least 12 nodes collected and analyzed', 'Specific criteria met for Breast (e.g. SLNB, ALND findings)', 'Less than 12 nodes collected/analyzed', 'No nodes assessed', 'Other']),
-  postSurgeryAnalysis: z.enum(['Final pathology/biopsy report generated', 'Awaiting final pathology', 'Other']),
+  cancerType: z.enum(['Colon Cancer', 'Rectal Cancer', 'Breast Cancer', 'Other'], { required_error: "Cancer type is required." }),
+  diagnosticConfirmation: z.enum(['Biopsy-Proven', 'Cytology-Proven', 'Imaging Suggestive', 'Other'], { required_error: "Diagnostic confirmation is required." }),
+  stagingEvaluation: z.enum(['Completed', 'In Progress', 'Not Yet Started', 'Other'], { required_error: "Staging evaluation is required." }),
+  diseaseExtent: z.enum(['Localized', 'Regional', 'Metastatic', 'Other'], { required_error: "Disease extent is required." }),
+  surgicalProcedure: z.enum(['Includes nodal harvest', 'Excisional Biopsy', 'Lumpectomy', 'Mastectomy', 'Sentinel Lymph Node Biopsy (SLNB)', 'Axillary LymphNode Dissection (ALND)', 'Other'], { required_error: "Surgical procedure is required." }),
+  lymphNodeAssessment: z.enum(['At least 12 nodes collected and analyzed', 'Specific criteria met for Breast (e.g. SLNB, ALND findings)', 'Less than 12 nodes collected/analyzed', 'No nodes assessed', 'Other'], { required_error: "Lymph node assessment is required." }),
+  postSurgeryAnalysis: z.enum(['Final pathology/biopsy report generated', 'Awaiting final pathology', 'Other'], { required_error: "Post-surgery analysis is required." }),
   tumorType: z.string().min(1, "Tumor type is required."),
   grade: z.string().min(1, "Grade is required."),
-  tStage: z.enum(['Tis', 'T1', 'T2', 'T3', 'T4a', 'T4b', 'T4c', 'T4d', 'T4', 'TX']),
-  nStage: z.enum(['N0', 'N0(i+)', 'N1a', 'N1b', 'N1c', 'N1mi', 'N1', 'N2a', 'N2b', 'N2', 'N3a', 'N3b', 'N3c', 'N3', 'NX']),
+  tStage: z.enum(['Tis', 'T1', 'T2', 'T3', 'T4a', 'T4b', 'T4c', 'T4d', 'T4', 'TX'], { required_error: "T Stage is required." }),
+  nStage: z.enum(['N0', 'N0(i+)', 'N1a', 'N1b', 'N1c', 'N1mi', 'N1', 'N2a', 'N2b', 'N2', 'N3a', 'N3b', 'N3c', 'N3', 'NX'], { required_error: "N Stage is required." }),
   vascularLymphaticInvasion: z.boolean().optional(),
 });
 
-type FormValues = Omit<GenerateTreatmentRecommendationInput, 'guidelineDocumentContent'>;
+// This type is for the form values before adding guidelineDocumentContent
+type CaseFormValues = z.infer<typeof formSchema>;
 
 interface CaseAssessmentFormProps {
   addAuditEntry: (entry: AuditEntry) => void;
@@ -55,68 +65,107 @@ interface CaseAssessmentFormProps {
 export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [recommendation, setRecommendation] = useState<GenerateTreatmentRecommendationOutput | null>(null);
-  const [currentFormInputForDisplay, setCurrentFormInputForDisplay] = useState<GenerateTreatmentRecommendationInput | null>(null);
+  const [recommendationOutput, setRecommendationOutput] = useState<CancerTreatmentOutput | null>(null);
+  const [currentFormInputForDisplay, setCurrentFormInputForDisplay] = useState<AllTreatmentInput | null>(null);
 
-  const form = useForm<FormValues>({
+  const form = useForm<CaseFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      cancerType: 'Colon Cancer',
-      diagnosticConfirmation: 'Biopsy-Proven',
-      stagingEvaluation: 'Completed',
-      diseaseExtent: 'Localized',
-      surgicalProcedure: 'Includes nodal harvest',
-      lymphNodeAssessment: 'At least 12 nodes collected and analyzed',
-      postSurgeryAnalysis: 'Final pathology/biopsy report generated',
-      tumorType: formOptions.tumorTypeOptions[0].value, 
-      grade: formOptions.gradeOptions[0].value, 
-      tStage: 'T1',
-      nStage: 'N0',
+      // Set all dropdowns to undefined to show placeholder by default
+      cancerType: undefined,
+      diagnosticConfirmation: undefined,
+      stagingEvaluation: undefined,
+      diseaseExtent: undefined,
+      surgicalProcedure: undefined,
+      lymphNodeAssessment: undefined,
+      postSurgeryAnalysis: undefined,
+      tumorType: undefined, // Will show placeholder
+      grade: undefined,     // Will show placeholder
+      tStage: undefined,
+      nStage: undefined,
       vascularLymphaticInvasion: false,
     },
   });
 
   const tStage = form.watch("tStage");
   const nStage = form.watch("nStage");
-  // This logic for LVI visibility is specific to colon/rectal cancer contexts, may need adjustment for other cancer types.
-  // For now, it remains as per original implementation.
   const showVascularInvasionField = tStage === 'T3' && nStage === 'N0';
 
-  async function onSubmit(values: FormValues) {
+  async function onSubmit(values: CaseFormValues) {
     setIsLoading(true);
-    setRecommendation(null);
+    setRecommendationOutput(null);
+    setCurrentFormInputForDisplay(null);
 
-    let guidelineContentForAI = "Placeholder: No PDF uploaded or content not extracted. PDF processing is currently simulated. The AI will be informed that it should base its recommendation on this placeholder or state that it cannot proceed without actual guidelines.";
+    let guidelineDocumentContent: string;
+    let submissionData: AllTreatmentInput;
 
-    if (values.cancerType === 'Breast Cancer') {
-      guidelineContentForAI = `No guideline document currently available for ${values.cancerType}. The AI should state that a recommendation cannot be provided.`;
-    } else if (values.cancerType === 'Colon Cancer' || values.cancerType === 'Rectal Cancer') {
-      guidelineContentForAI = `Simulated NCCN (or equivalent) guideline content for ${values.cancerType} is being used. Base recommendation strictly on this content. If this simulated content is insufficient, state so.`;
+    switch (values.cancerType) {
+      case 'Colon Cancer':
+        guidelineDocumentContent = `Simulated NCCN (or equivalent) guideline content for Colon Cancer is being used. Base recommendation strictly on this content. If this simulated content is insufficient, state so. Focus on identifying direct quotes or section references if possible.`;
+        submissionData = { ...values, cancerType: 'Colon Cancer', guidelineDocumentContent };
+        break;
+      case 'Rectal Cancer':
+        guidelineDocumentContent = `Simulated NCCN (or equivalent) guideline content for Rectal Cancer is being used. Base recommendation strictly on this content. If this simulated content is insufficient, state so. Focus on identifying direct quotes or section references if possible.`;
+        submissionData = { ...values, cancerType: 'Rectal Cancer', guidelineDocumentContent };
+        break;
+      case 'Breast Cancer':
+        guidelineDocumentContent = `No guideline document currently available for Breast Cancer. State that a recommendation cannot be provided due to lack of specific guidelines for Breast Cancer.`;
+        submissionData = { ...values, cancerType: 'Breast Cancer', guidelineDocumentContent };
+        break;
+      case 'Other':
+      default:
+        guidelineDocumentContent = `Placeholder: No specific PDF uploaded or content not extracted for 'Other' cancer types. The AI should state that it cannot provide a recommendation without a relevant guideline document for the specified 'Other' cancer type.`;
+        submissionData = { ...values, cancerType: 'Other', guidelineDocumentContent };
+        break;
     }
-    // For 'Other' cancer type, the generic placeholder defined above will be used.
     
-    const submissionData: GenerateTreatmentRecommendationInput = {
-      ...values,
-      guidelineDocumentContent: guidelineContentForAI,
-    };
     setCurrentFormInputForDisplay(submissionData);
 
     try {
-      const result = await generateTreatmentRecommendation(submissionData);
-      setRecommendation(result);
-      // Avoid toast for "no recommendation" messages, check if recommendation is a known negative response
-      if (!result.recommendation.toLowerCase().includes("no specific guideline document is currently available")) {
+      let result: CancerTreatmentOutput;
+      switch (submissionData.cancerType) {
+        case 'Colon Cancer':
+          result = await diagnoseColonCancer(submissionData as Extract<AllTreatmentInput, { cancerType: 'Colon Cancer' }>);
+          break;
+        case 'Rectal Cancer':
+           result = await diagnoseRectalCancer(submissionData as Extract<AllTreatmentInput, { cancerType: 'Rectal Cancer' }>);
+          break;
+        case 'Breast Cancer':
+          result = await diagnoseBreastCancer(submissionData as Extract<AllTreatmentInput, { cancerType: 'Breast Cancer' }>);
+          break;
+        case 'Other':
+          result = await diagnoseOtherCancer(submissionData as Extract<AllTreatmentInput, { cancerType: 'Other' }>);
+          break;
+        default:
+          // Should not happen due to form validation, but as a fallback:
+          const exhaustiveCheck: never = submissionData.cancerType;
+          throw new Error(`Unsupported cancer type: ${exhaustiveCheck}`);
+      }
+      
+      setRecommendationOutput(result);
+
+      if (result.noRecommendationReason) {
+        toast({
+          title: "Guideline Information",
+          description: result.noRecommendationReason,
+          variant: "default", // Or 'destructive' if it's an error-like message
+        });
+      } else if (result.recommendation) {
         toast({
           title: "Recommendation Generated",
           description: "Treatment recommendation has been successfully generated.",
         });
       }
+
       addAuditEntry({
         ...submissionData,
         id: new Date().toISOString(), 
         timestamp: new Date(),
         recommendation: result.recommendation,
+        references: result.references,
+        noRecommendationReason: result.noRecommendationReason,
       });
+
     } catch (error) {
       console.error("Error generating recommendation:", error);
       toast({
@@ -129,7 +178,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     }
   }
 
-  const renderSelectField = (fieldName: keyof FormValues, label: string, options: { value: string; label: string }[]) => (
+  const renderSelectField = (fieldName: keyof CaseFormValues, label: string, options: { value: string; label: string }[], placeholder: string) => (
     <FormField
       control={form.control}
       name={fieldName}
@@ -138,12 +187,42 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
           <FormLabel>{label}</FormLabel>
           <Select 
             onValueChange={field.onChange} 
-            defaultValue={field.value as string | undefined} // Ensure defaultValue can be undefined if field.value is
-            value={field.value as string | undefined}
+            value={field.value as string | undefined} // field.value could be undefined
           >
             <FormControl>
               <SelectTrigger>
-                <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+                <SelectValue placeholder={placeholder} />
+              </SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              {options.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+  
+  // Special render function for tumorType and grade as they are string inputs but used like selects
+  const renderStringSelectField = (fieldName: "tumorType" | "grade", label: string, options: { value: string; label: string }[], placeholder: string) => (
+    <FormField
+      control={form.control}
+      name={fieldName}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          <Select
+            onValueChange={field.onChange}
+            value={field.value}
+          >
+            <FormControl>
+              <SelectTrigger>
+                <SelectValue placeholder={placeholder} />
               </SelectTrigger>
             </FormControl>
             <SelectContent>
@@ -160,6 +239,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     />
   );
 
+
   return (
     <div className="space-y-8">
       <Card className="shadow-lg">
@@ -171,23 +251,23 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {renderSelectField("cancerType", "Cancer Type", formOptions.cancerTypeOptions)}
-                {renderSelectField("diagnosticConfirmation", "Diagnostic Confirmation", formOptions.diagnosticConfirmationOptions)}
-                {renderSelectField("stagingEvaluation", "Staging Evaluation", formOptions.stagingEvaluationOptions)}
-                {renderSelectField("diseaseExtent", "Disease Extent", formOptions.diseaseExtentOptions)}
-                {renderSelectField("surgicalProcedure", "Surgical Procedure", formOptions.surgicalProcedureOptions)}
-                {renderSelectField("lymphNodeAssessment", "Lymph Node Assessment", formOptions.lymphNodeAssessmentOptions)}
-                {renderSelectField("postSurgeryAnalysis", "Post-Surgery Analysis", formOptions.postSurgeryAnalysisOptions)}
+                {renderSelectField("cancerType", "Cancer Type", formOptions.cancerTypeOptions, "Select cancer type")}
+                {renderSelectField("diagnosticConfirmation", "Diagnostic Confirmation", formOptions.diagnosticConfirmationOptions, "Select confirmation")}
+                {renderSelectField("stagingEvaluation", "Staging Evaluation", formOptions.stagingEvaluationOptions, "Select staging status")}
+                {renderSelectField("diseaseExtent", "Disease Extent", formOptions.diseaseExtentOptions, "Select disease extent")}
+                {renderSelectField("surgicalProcedure", "Surgical Procedure", formOptions.surgicalProcedureOptions, "Select surgical procedure")}
+                {renderSelectField("lymphNodeAssessment", "Lymph Node Assessment", formOptions.lymphNodeAssessmentOptions, "Select lymph node assessment")}
+                {renderSelectField("postSurgeryAnalysis", "Post-Surgery Analysis", formOptions.postSurgeryAnalysisOptions, "Select post-surgery analysis")}
               </div>
 
               <Separator className="my-8" />
 
               <h3 className="text-xl font-semibold font-headline text-foreground/90">Report Findings</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-md bg-muted/20">
-                {renderSelectField("tumorType", "Tumor Type (select most appropriate)", formOptions.tumorTypeOptions)}
-                {renderSelectField("grade", "Grade (select most appropriate)", formOptions.gradeOptions)}
-                {renderSelectField("tStage", "T Stage", formOptions.tStageOptions)}
-                {renderSelectField("nStage", "N Stage", formOptions.nStageOptions)}
+                {renderStringSelectField("tumorType", "Tumor Type", formOptions.tumorTypeOptions, "Select tumor type")}
+                {renderStringSelectField("grade", "Grade", formOptions.gradeOptions, "Select grade")}
+                {renderSelectField("tStage", "T Stage", formOptions.tStageOptions, "Select T Stage")}
+                {renderSelectField("nStage", "N Stage", formOptions.nStageOptions, "Select N Stage")}
                 
                 {showVascularInvasionField && (
                   <FormField
@@ -226,7 +306,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
         </CardContent>
       </Card>
 
-      {recommendation && <RecommendationDisplay formData={currentFormInputForDisplay} recommendation={recommendation} />}
+      {recommendationOutput && <RecommendationDisplay formData={currentFormInputForDisplay} recommendationOutput={recommendationOutput} />}
     </div>
   );
 }
