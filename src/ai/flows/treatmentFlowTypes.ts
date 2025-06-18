@@ -14,7 +14,7 @@ export const BaseTreatmentInputSchema = z.object({
   diagnosticConfirmation: z.enum(['Biopsy-Proven', 'Cytology-Proven', 'Imaging Suggestive', 'Other']).describe('Method of diagnostic confirmation.'),
   stagingEvaluation: z.enum(['Completed', 'In Progress', 'Not Yet Started', 'Other']).describe('Status of staging evaluation.'),
   diseaseExtent: z.enum(['Localized', 'Regional', 'Metastatic', 'Other']).describe('Extent of the disease.'),
-  surgicalProcedure: z.enum(['Includes nodal harvest', 'Excisional Biopsy', 'Lumpectomy', 'Mastectomy', 'Sentinel Lymph Node Biopsy (SLNB)', 'Axillary Lymph Node Dissection (ALND)', 'Other']).describe('Surgical procedure performed.'),
+  surgicalProcedure: z.string().describe('Surgical procedure performed.'), // Changed from z.enum
   lymphNodeAssessment: z.enum(['At least 12 nodes collected and analyzed', 'Specific criteria met for Breast (e.g. SLNB, ALND findings)', 'Less than 12 nodes collected/analyzed', 'No nodes assessed', 'Other']).describe('Assessment of lymph nodes.'),
   postSurgeryAnalysis: z.enum(['Final pathology/biopsy report generated', 'Awaiting final pathology', 'Other']).describe('Analysis performed after surgery.'),
   tumorType: z.string().describe('Type of tumor.'),
