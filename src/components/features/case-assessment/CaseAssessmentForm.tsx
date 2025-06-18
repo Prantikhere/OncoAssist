@@ -32,21 +32,23 @@ import type { AuditEntry } from "@/types";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
-  cancerType: z.enum(['Colon Cancer', 'Other']),
+  cancerType: z.enum(['Colon Cancer', 'Rectal Cancer', 'Other']),
   diagnosticConfirmation: z.enum(['Biopsy-Proven', 'Other']),
   stagingEvaluation: z.enum(['Completed', 'Other']),
-  diseaseExtent: z.enum(['Localized', 'Other']),
+  diseaseExtent: z.enum(['Localized', 'Metastatic', 'Other']),
   surgicalProcedure: z.enum(['Includes nodal harvest', 'Other']),
-  lymphNodeAssessment: z.enum(['At least 12 nodes collected and analyzed', 'Other']),
+  lymphNodeAssessment: z.enum(['At least 12 nodes collected and analyzed', 'Less than 12 nodes collected/analyzed', 'Other']),
   postSurgeryAnalysis: z.enum(['Final pathology/biopsy report generated', 'Other']),
-  tumorType: z.string().min(1, "Tumor type is required."),
-  grade: z.string().min(1, "Grade is required."),
-  tStage: z.enum(['T1', 'T2', 'T3', 'T4']),
-  nStage: z.enum(['N0', 'N1', 'N2', 'N3']),
+  tumorType: z.string().min(1, "Tumor type is required."), // Assuming options are dynamically filtered or this allows free text if 'Other'
+  grade: z.string().min(1, "Grade is required."), // Assuming options are dynamically filtered or this allows free text if 'Other'
+  tStage: z.enum(['Tis', 'T1', 'T2', 'T3', 'T4a', 'T4b', 'T4']),
+  nStage: z.enum(['N0', 'N1a', 'N1b', 'N1c', 'N1', 'N2a', 'N2b', 'N2', 'N3']),
   vascularLymphaticInvasion: z.boolean().optional(),
+  // guidelineDocumentContent is not part of the form visually, but will be added before sending to AI
 });
 
-type FormValues = GenerateTreatmentRecommendationInput;
+// We define FormValues based on the schema, but exclude guidelineDocumentContent as it's not a direct form field.
+type FormValues = Omit<GenerateTreatmentRecommendationInput, 'guidelineDocumentContent'>;
 
 interface CaseAssessmentFormProps {
   addAuditEntry: (entry: AuditEntry) => void;
@@ -56,7 +58,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<GenerateTreatmentRecommendationOutput | null>(null);
-  const [currentFormData, setCurrentFormData] = useState<FormValues | null>(null);
+  const [currentFormInputForDisplay, setCurrentFormInputForDisplay] = useState<GenerateTreatmentRecommendationInput | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -68,8 +70,8 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
       surgicalProcedure: 'Includes nodal harvest',
       lymphNodeAssessment: 'At least 12 nodes collected and analyzed',
       postSurgeryAnalysis: 'Final pathology/biopsy report generated',
-      tumorType: formOptions.tumorTypeOptions[0].value,
-      grade: formOptions.gradeOptions[0].value,
+      tumorType: formOptions.tumorTypeOptions[0].value, // Ensure this aligns with your logic if 'Other' is chosen
+      grade: formOptions.gradeOptions[0].value, // Ensure this aligns with your logic if 'Other' is chosen
       tStage: 'T1',
       nStage: 'N0',
       vascularLymphaticInvasion: false,
@@ -83,17 +85,23 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
   async function onSubmit(values: FormValues) {
     setIsLoading(true);
     setRecommendation(null);
-    setCurrentFormData(values);
+
+    const submissionData: GenerateTreatmentRecommendationInput = {
+      ...values,
+      guidelineDocumentContent: "Placeholder: No PDF uploaded or content not extracted. PDF processing is currently simulated. The AI will be informed that it should base its recommendation on this placeholder or state that it cannot proceed without actual guidelines.",
+    };
+    setCurrentFormInputForDisplay(submissionData);
+
 
     try {
-      const result = await generateTreatmentRecommendation(values);
+      const result = await generateTreatmentRecommendation(submissionData);
       setRecommendation(result);
       toast({
         title: "Recommendation Generated",
-        description: "Treatment recommendation has been successfully generated.",
+        description: "Treatment recommendation has been successfully generated based on the provided information.",
       });
       addAuditEntry({
-        ...values,
+        ...submissionData, // This now includes the guidelineDocumentContent placeholder
         id: new Date().toISOString(), 
         timestamp: new Date(),
         recommendation: result.recommendation,
@@ -117,7 +125,10 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
       render={({ field }) => (
         <FormItem>
           <FormLabel>{label}</FormLabel>
-          <Select onValueChange={field.onChange} defaultValue={field.value as string}>
+          <Select 
+            onValueChange={field.onChange} 
+            defaultValue={field.value as string}
+          >
             <FormControl>
               <SelectTrigger>
                 <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
@@ -142,7 +153,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-3xl font-headline text-primary">Case Assessment</CardTitle>
-          <CardDescription>Enter patient case details to receive an NCCN guideline-based treatment recommendation.</CardDescription>
+          <CardDescription>Enter patient case details. Recommendation will be based on information from (simulated) uploaded guideline documents.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -203,7 +214,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
         </CardContent>
       </Card>
 
-      {recommendation && <RecommendationDisplay formData={currentFormData} recommendation={recommendation} />}
+      {recommendation && <RecommendationDisplay formData={currentFormInputForDisplay} recommendation={recommendation} />}
     </div>
   );
 }
