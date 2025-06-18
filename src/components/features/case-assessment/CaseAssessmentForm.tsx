@@ -25,7 +25,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import * as formOptions from "@/config/formOptions";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { RecommendationDisplay } from "./RecommendationDisplay";
 import type { AuditEntry } from "@/types";
 import { Loader2 } from "lucide-react";
@@ -33,29 +33,30 @@ import { Loader2 } from "lucide-react";
 import { 
   type AllTreatmentInput, 
   type CancerTreatmentOutput,
-  // Import specific flow functions
   diagnoseColonCancer,
   diagnoseBreastCancer,
   diagnoseRectalCancer,
   diagnoseOtherCancer
-} from "@/ai/flows"; // Assuming an index.ts in flows for easier imports
+} from "@/ai/flows";
 
 const formSchema = z.object({
   cancerType: z.enum(['Colon Cancer', 'Rectal Cancer', 'Breast Cancer', 'Other'], { required_error: "Cancer type is required." }),
   diagnosticConfirmation: z.enum(['Biopsy-Proven', 'Cytology-Proven', 'Imaging Suggestive', 'Other'], { required_error: "Diagnostic confirmation is required." }),
   stagingEvaluation: z.enum(['Completed', 'In Progress', 'Not Yet Started', 'Other'], { required_error: "Staging evaluation is required." }),
   diseaseExtent: z.enum(['Localized', 'Regional', 'Metastatic', 'Other'], { required_error: "Disease extent is required." }),
-  surgicalProcedure: z.enum(['Includes nodal harvest', 'Excisional Biopsy', 'Lumpectomy', 'Mastectomy', 'Sentinel Lymph Node Biopsy (SLNB)', 'Axillary LymphNode Dissection (ALND)', 'Other'], { required_error: "Surgical procedure is required." }),
-  lymphNodeAssessment: z.enum(['At least 12 nodes collected and analyzed', 'Specific criteria met for Breast (e.g. SLNB, ALND findings)', 'Less than 12 nodes collected/analyzed', 'No nodes assessed', 'Other'], { required_error: "Lymph node assessment is required." }),
+  
+  // Fields that will have dynamic options
+  surgicalProcedure: z.string({ required_error: "Surgical procedure is required." }).min(1,"Surgical procedure is required."),
+  lymphNodeAssessment: z.string({ required_error: "Lymph node assessment is required." }).min(1, "Lymph node assessment is required."),
+  tumorType: z.string({ required_error: "Tumor type is required." }).min(1, "Tumor type is required."),
+  grade: z.string({ required_error: "Grade is required." }).min(1, "Grade is required."),
+  tStage: z.string({ required_error: "T Stage is required." }).min(1, "T Stage is required."),
+  nStage: z.string({ required_error: "N Stage is required." }).min(1, "N Stage is required."),
+  
   postSurgeryAnalysis: z.enum(['Final pathology/biopsy report generated', 'Awaiting final pathology', 'Other'], { required_error: "Post-surgery analysis is required." }),
-  tumorType: z.string().min(1, "Tumor type is required."),
-  grade: z.string().min(1, "Grade is required."),
-  tStage: z.enum(['Tis', 'T1', 'T2', 'T3', 'T4a', 'T4b', 'T4c', 'T4d', 'T4', 'TX'], { required_error: "T Stage is required." }),
-  nStage: z.enum(['N0', 'N0(i+)', 'N1a', 'N1b', 'N1c', 'N1mi', 'N1', 'N2a', 'N2b', 'N2', 'N3a', 'N3b', 'N3c', 'N3', 'NX'], { required_error: "N Stage is required." }),
   vascularLymphaticInvasion: z.boolean().optional(),
 });
 
-// This type is for the form values before adding guidelineDocumentContent
 type CaseFormValues = z.infer<typeof formSchema>;
 
 interface CaseAssessmentFormProps {
@@ -71,7 +72,6 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
   const form = useForm<CaseFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      // Set all dropdowns to undefined to show placeholder by default
       cancerType: undefined,
       diagnosticConfirmation: undefined,
       stagingEvaluation: undefined,
@@ -79,17 +79,36 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
       surgicalProcedure: undefined,
       lymphNodeAssessment: undefined,
       postSurgeryAnalysis: undefined,
-      tumorType: undefined, // Will show placeholder
-      grade: undefined,     // Will show placeholder
+      tumorType: undefined,
+      grade: undefined,
       tStage: undefined,
       nStage: undefined,
       vascularLymphaticInvasion: false,
     },
   });
 
-  const tStage = form.watch("tStage");
-  const nStage = form.watch("nStage");
-  const showVascularInvasionField = tStage === 'T3' && nStage === 'N0';
+  const watchedCancerType = form.watch("cancerType");
+  const watchedTStage = form.watch("tStage");
+  const watchedNStage = form.watch("nStage");
+
+  useEffect(() => {
+    // Reset dependent fields when cancerType changes
+    if (watchedCancerType) { // only reset if a cancer type is selected, not on initial undefined
+        form.resetField("tumorType", { defaultValue: undefined });
+        form.resetField("grade", { defaultValue: undefined });
+        form.resetField("surgicalProcedure", { defaultValue: undefined });
+        form.resetField("lymphNodeAssessment", { defaultValue: undefined });
+        form.resetField("tStage", { defaultValue: undefined });
+        form.resetField("nStage", { defaultValue: undefined });
+        form.resetField("vascularLymphaticInvasion", { defaultValue: false });
+    }
+  }, [watchedCancerType, form.resetField]);
+
+
+  const showVascularInvasionField = 
+    (watchedCancerType === 'Colon Cancer' || watchedCancerType === 'Rectal Cancer') &&
+    watchedTStage === 'T3' && 
+    watchedNStage === 'N0';
 
   async function onSubmit(values: CaseFormValues) {
     setIsLoading(true);
@@ -97,25 +116,35 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     setCurrentFormInputForDisplay(null);
 
     let guidelineDocumentContent: string;
-    let submissionData: AllTreatmentInput;
+    // Ensure all fields are correctly typed for AllTreatmentInput
+    const submissionValues = {
+        ...values,
+        // The following fields are now string, ensure they are correctly passed
+        // Zod schema for AllTreatmentInput in flows expects specific enum like values for T/N stage
+        // This might require casting or ensuring string values match enum definitions if strictness is high in AI flow.
+        // For now, assuming string values from select are compatible.
+    };
 
+
+    let submissionData: AllTreatmentInput;
     switch (values.cancerType) {
       case 'Colon Cancer':
         guidelineDocumentContent = `Simulated NCCN (or equivalent) guideline content for Colon Cancer is being used. Base recommendation strictly on this content. If this simulated content is insufficient, state so. Focus on identifying direct quotes or section references if possible.`;
-        submissionData = { ...values, cancerType: 'Colon Cancer', guidelineDocumentContent };
+        submissionData = { ...submissionValues, cancerType: 'Colon Cancer', guidelineDocumentContent };
         break;
       case 'Rectal Cancer':
         guidelineDocumentContent = `Simulated NCCN (or equivalent) guideline content for Rectal Cancer is being used. Base recommendation strictly on this content. If this simulated content is insufficient, state so. Focus on identifying direct quotes or section references if possible.`;
-        submissionData = { ...values, cancerType: 'Rectal Cancer', guidelineDocumentContent };
+        submissionData = { ...submissionValues, cancerType: 'Rectal Cancer', guidelineDocumentContent };
         break;
       case 'Breast Cancer':
         guidelineDocumentContent = `No guideline document currently available for Breast Cancer. State that a recommendation cannot be provided due to lack of specific guidelines for Breast Cancer.`;
-        submissionData = { ...values, cancerType: 'Breast Cancer', guidelineDocumentContent };
+        submissionData = { ...submissionValues, cancerType: 'Breast Cancer', guidelineDocumentContent };
         break;
       case 'Other':
       default:
         guidelineDocumentContent = `Placeholder: No specific PDF uploaded or content not extracted for 'Other' cancer types. The AI should state that it cannot provide a recommendation without a relevant guideline document for the specified 'Other' cancer type.`;
-        submissionData = { ...values, cancerType: 'Other', guidelineDocumentContent };
+        // Type assertion to ensure it matches one of the union types in AllTreatmentInput
+        submissionData = { ...submissionValues, cancerType: 'Other', guidelineDocumentContent } as AllTreatmentInput; 
         break;
     }
     
@@ -137,9 +166,8 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
           result = await diagnoseOtherCancer(submissionData as Extract<AllTreatmentInput, { cancerType: 'Other' }>);
           break;
         default:
-          // Should not happen due to form validation, but as a fallback:
-          const exhaustiveCheck: never = submissionData.cancerType;
-          throw new Error(`Unsupported cancer type: ${exhaustiveCheck}`);
+          const exhaustiveCheck: never = submissionData; // Check if all cases covered
+          throw new Error(`Unsupported cancer type: ${(exhaustiveCheck as any).cancerType}`);
       }
       
       setRecommendationOutput(result);
@@ -148,7 +176,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
         toast({
           title: "Guideline Information",
           description: result.noRecommendationReason,
-          variant: "default", // Or 'destructive' if it's an error-like message
+          variant: "default",
         });
       } else if (result.recommendation) {
         toast({
@@ -178,7 +206,62 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     }
   }
 
-  const renderSelectField = (fieldName: keyof CaseFormValues, label: string, options: { value: string; label: string }[], placeholder: string) => (
+  const getDynamicOptions = (fieldName: keyof typeof formOptions.defaultTumorTypeOptions | string) => {
+    if (!watchedCancerType) {
+        switch (fieldName) {
+            case 'tumorTypeOptions': return formOptions.defaultTumorTypeOptions;
+            case 'gradeOptions': return formOptions.defaultGradeOptions;
+            case 'surgicalProcedureOptions': return formOptions.defaultSurgicalProcedureOptions;
+            case 'lymphNodeAssessmentOptions': return formOptions.defaultLymphNodeAssessmentOptions;
+            case 'tStageOptions': return formOptions.defaultTStageOptions;
+            case 'nStageOptions': return formOptions.defaultNStageOptions;
+            default: return [];
+        }
+    }
+    switch (watchedCancerType) {
+        case 'Colon Cancer':
+            if (fieldName === 'tumorTypeOptions') return formOptions.colonTumorTypeOptions;
+            if (fieldName === 'gradeOptions') return formOptions.colonGradeOptions;
+            if (fieldName === 'surgicalProcedureOptions') return formOptions.colonSurgicalProcedureOptions;
+            if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.colonLymphNodeAssessmentOptions;
+            if (fieldName === 'tStageOptions') return formOptions.colonTStageOptions;
+            if (fieldName === 'nStageOptions') return formOptions.colonNStageOptions;
+            break;
+        case 'Rectal Cancer':
+            if (fieldName === 'tumorTypeOptions') return formOptions.rectalTumorTypeOptions;
+            if (fieldName === 'gradeOptions') return formOptions.rectalGradeOptions;
+            if (fieldName === 'surgicalProcedureOptions') return formOptions.rectalSurgicalProcedureOptions;
+            if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.rectalLymphNodeAssessmentOptions;
+            if (fieldName === 'tStageOptions') return formOptions.rectalTStageOptions;
+            if (fieldName === 'nStageOptions') return formOptions.rectalNStageOptions;
+            break;
+        case 'Breast Cancer':
+            if (fieldName === 'tumorTypeOptions') return formOptions.breastTumorTypeOptions;
+            if (fieldName === 'gradeOptions') return formOptions.breastGradeOptions;
+            if (fieldName === 'surgicalProcedureOptions') return formOptions.breastSurgicalProcedureOptions;
+            if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.breastLymphNodeAssessmentOptions;
+            if (fieldName === 'tStageOptions') return formOptions.breastTStageOptions;
+            if (fieldName === 'nStageOptions') return formOptions.breastNStageOptions;
+            break;
+        case 'Other':
+            if (fieldName === 'tumorTypeOptions') return formOptions.otherCancerTumorTypeOptions;
+            if (fieldName === 'gradeOptions') return formOptions.otherCancerGradeOptions;
+            if (fieldName === 'surgicalProcedureOptions') return formOptions.otherCancerSurgicalProcedureOptions;
+            if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.otherCancerLymphNodeAssessmentOptions;
+            if (fieldName === 'tStageOptions') return formOptions.otherCancerTStageOptions;
+            if (fieldName === 'nStageOptions') return formOptions.otherCancerNStageOptions;
+            break;
+    }
+    return []; // Fallback
+  };
+
+
+  const renderSelectField = (
+    fieldName: keyof CaseFormValues, 
+    label: string, 
+    options: { value: string; label: string; disabled?: boolean }[], 
+    placeholder: string
+  ) => (
     <FormField
       control={form.control}
       name={fieldName}
@@ -186,8 +269,9 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
         <FormItem>
           <FormLabel>{label}</FormLabel>
           <Select 
-            onValueChange={field.onChange} 
-            value={field.value as string | undefined} // field.value could be undefined
+            onValueChange={(value) => field.onChange(value)} 
+            value={field.value as string | undefined}
+            disabled={!watchedCancerType && fieldName !== 'cancerType' && fieldName !== 'diagnosticConfirmation' && fieldName !== 'stagingEvaluation' && fieldName !== 'diseaseExtent' && fieldName !== 'postSurgeryAnalysis'}
           >
             <FormControl>
               <SelectTrigger>
@@ -196,7 +280,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
             </FormControl>
             <SelectContent>
               {options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
+                <SelectItem key={option.value} value={option.value} disabled={option.disabled}>
                   {option.label}
                 </SelectItem>
               ))}
@@ -208,8 +292,12 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     />
   );
   
-  // Special render function for tumorType and grade as they are string inputs but used like selects
-  const renderStringSelectField = (fieldName: "tumorType" | "grade", label: string, options: { value: string; label: string }[], placeholder: string) => (
+  const renderStringSelectField = (
+    fieldName: "tumorType" | "grade" | "surgicalProcedure" | "lymphNodeAssessment" | "tStage" | "nStage", 
+    label: string, 
+    options: { value: string; label: string; disabled?:boolean }[], 
+    placeholder: string
+  ) => (
     <FormField
       control={form.control}
       name={fieldName}
@@ -217,8 +305,9 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
         <FormItem>
           <FormLabel>{label}</FormLabel>
           <Select
-            onValueChange={field.onChange}
+            onValueChange={(value) => field.onChange(value)}
             value={field.value}
+            disabled={!watchedCancerType}
           >
             <FormControl>
               <SelectTrigger>
@@ -227,7 +316,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
             </FormControl>
             <SelectContent>
               {options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
+                <SelectItem key={option.value} value={option.value} disabled={option.disabled}>
                   {option.label}
                 </SelectItem>
               ))}
@@ -255,19 +344,26 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
                 {renderSelectField("diagnosticConfirmation", "Diagnostic Confirmation", formOptions.diagnosticConfirmationOptions, "Select confirmation")}
                 {renderSelectField("stagingEvaluation", "Staging Evaluation", formOptions.stagingEvaluationOptions, "Select staging status")}
                 {renderSelectField("diseaseExtent", "Disease Extent", formOptions.diseaseExtentOptions, "Select disease extent")}
-                {renderSelectField("surgicalProcedure", "Surgical Procedure", formOptions.surgicalProcedureOptions, "Select surgical procedure")}
-                {renderSelectField("lymphNodeAssessment", "Lymph Node Assessment", formOptions.lymphNodeAssessmentOptions, "Select lymph node assessment")}
                 {renderSelectField("postSurgeryAnalysis", "Post-Surgery Analysis", formOptions.postSurgeryAnalysisOptions, "Select post-surgery analysis")}
+                 {/* Generic fields end */}
               </div>
+              
+              <Separator className="my-8" />
+              <h3 className="text-xl font-semibold font-headline text-foreground/90">Cancer Specific Details</h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-md bg-muted/20">
+                {renderStringSelectField("surgicalProcedure", "Surgical Procedure", getDynamicOptions("surgicalProcedureOptions"), "Select surgical procedure")}
+                {renderStringSelectField("lymphNodeAssessment", "Lymph Node Assessment", getDynamicOptions("lymphNodeAssessmentOptions"), "Select lymph node assessment")}
+              </div>
+
 
               <Separator className="my-8" />
 
               <h3 className="text-xl font-semibold font-headline text-foreground/90">Report Findings</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-md bg-muted/20">
-                {renderStringSelectField("tumorType", "Tumor Type", formOptions.tumorTypeOptions, "Select tumor type")}
-                {renderStringSelectField("grade", "Grade", formOptions.gradeOptions, "Select grade")}
-                {renderSelectField("tStage", "T Stage", formOptions.tStageOptions, "Select T Stage")}
-                {renderSelectField("nStage", "N Stage", formOptions.nStageOptions, "Select N Stage")}
+                {renderStringSelectField("tumorType", "Tumor Type", getDynamicOptions("tumorTypeOptions"), "Select tumor type")}
+                {renderStringSelectField("grade", "Grade", getDynamicOptions("gradeOptions"), "Select grade")}
+                {renderStringSelectField("tStage", "T Stage", getDynamicOptions("tStageOptions"), "Select T Stage")}
+                {renderStringSelectField("nStage", "N Stage", getDynamicOptions("nStageOptions"), "Select N Stage")}
                 
                 {showVascularInvasionField && (
                   <FormField
@@ -276,13 +372,14 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm col-span-1 md:col-span-2 bg-background">
                         <div className="space-y-0.5">
-                          <FormLabel>Vascular/Lymphatic Invasion (if T3N0 Colon/Rectal)</FormLabel>
+                          <FormLabel>Vascular/Lymphatic Invasion (T3N0 Colon/Rectal)</FormLabel>
                           <FormMessage />
                         </div>
                         <FormControl>
                           <Switch
                             checked={field.value}
                             onCheckedChange={field.onChange}
+                            disabled={!watchedCancerType}
                           />
                         </FormControl>
                       </FormItem>
@@ -291,7 +388,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
                 )}
               </div>
               
-              <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
+              <Button type="submit" disabled={isLoading || !watchedCancerType} className="w-full sm:w-auto">
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -306,7 +403,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
         </CardContent>
       </Card>
 
-      {recommendationOutput && <RecommendationDisplay formData={currentFormInputForDisplay} recommendationOutput={recommendationOutput} />}
+      {recommendationOutput && currentFormInputForDisplay && <RecommendationDisplay formData={currentFormInputForDisplay} recommendationOutput={recommendationOutput} />}
     </div>
   );
 }
