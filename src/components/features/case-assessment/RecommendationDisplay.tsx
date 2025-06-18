@@ -1,9 +1,11 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download } from "lucide-react";
 import type { GenerateTreatmentRecommendationInput, GenerateTreatmentRecommendationOutput } from "@/ai/flows/generate-treatment-recommendation";
+import jsPDF from 'jspdf';
 
 interface RecommendationDisplayProps {
   formData: GenerateTreatmentRecommendationInput | null;
@@ -41,15 +43,29 @@ export function RecommendationDisplay({ formData, recommendation }: Recommendati
     reportContent += `------------------------------------\n`;
     reportContent += `${recommendation.recommendation}\n`;
 
-    const blob = new Blob([reportContent], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `OncoAssist_Report_${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const doc = new jsPDF();
+    const lines = reportContent.split('\n');
+    let yPosition = 15; // Initial Y position for text
+    const pageHeight = doc.internal.pageSize.height;
+    const bottomMargin = 15;
+    const lineHeight = 7; // Approximate line height, adjust as needed
+    const leftMargin = 10;
+
+    doc.setFontSize(12);
+
+    lines.forEach(line => {
+      if (yPosition > pageHeight - bottomMargin) {
+        doc.addPage();
+        yPosition = 15; // Reset Y position for new page
+      }
+      // jsPDF's text function can handle arrays for auto-wrapping, but here we split manually
+      // For more complex wrapping, `splitTextToSize` would be used.
+      const splitLine = doc.splitTextToSize(line, doc.internal.pageSize.width - (leftMargin * 2));
+      doc.text(splitLine, leftMargin, yPosition);
+      yPosition += (splitLine.length * lineHeight); 
+    });
+
+    doc.save(`OncoAssist_Report_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   return (
@@ -62,7 +78,7 @@ export function RecommendationDisplay({ formData, recommendation }: Recommendati
         <p className="whitespace-pre-wrap text-foreground/90">{recommendation.recommendation}</p>
         <Button onClick={handleDownloadReport} className="mt-6 w-full sm:w-auto" variant="outline">
           <Download className="mr-2 h-4 w-4" />
-          Download Report
+          Download Report (PDF)
         </Button>
       </CardContent>
     </Card>
