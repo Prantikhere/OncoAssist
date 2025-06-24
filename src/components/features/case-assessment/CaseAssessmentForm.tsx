@@ -29,6 +29,18 @@ import React, { useState, useEffect } from "react";
 import { RecommendationDisplay } from "./RecommendationDisplay";
 import type { AuditEntry } from "@/types";
 import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 import { 
   type AllTreatmentInput, 
@@ -64,9 +76,14 @@ interface CaseAssessmentFormProps {
 
 export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [recommendationOutput, setRecommendationOutput] = useState<CancerTreatmentOutput | null>(null);
   const [currentFormInputForDisplay, setCurrentFormInputForDisplay] = useState<AllTreatmentInput | null>(null);
+  const [dialogState, setDialogState] = useState<{ open: boolean; cancerType: string }>({
+    open: false,
+    cancerType: '',
+  });
 
   const form = useForm<CaseFormValues>({
     resolver: zodResolver(formSchema),
@@ -113,6 +130,17 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     setIsLoading(true);
     setRecommendationOutput(null);
     setCurrentFormInputForDisplay(null);
+    
+    // Simulate which guidelines are available. Only 'Colon Cancer' has one.
+    const availableGuidelines: Record<string, boolean> = {
+        'Colon Cancer': true,
+    };
+    
+    if (values.cancerType !== 'Other' && !availableGuidelines[values.cancerType]) {
+        setDialogState({ open: true, cancerType: values.cancerType });
+        setIsLoading(false);
+        return; // Stop submission
+    }
 
     let guidelineDocumentContent: string;
     const submissionValues = { ...values };
@@ -319,79 +347,100 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
   );
 
   return (
-    <div className="space-y-8">
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-3xl font-headline text-primary">Case Assessment</CardTitle>
-          <CardDescription>Enter patient case details. Recommendation will be based on (simulated) uploaded NCCN guideline documents specific to the cancer type.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {renderSelectField("cancerType", "Cancer Type", formOptions.cancerTypeOptions, "Select cancer type")}
-                {renderSelectField("diagnosticConfirmation", "Diagnostic Confirmation", formOptions.diagnosticConfirmationOptions, "Select confirmation")}
-                {renderSelectField("stagingEvaluation", "Staging Evaluation", formOptions.stagingEvaluationOptions, "Select staging status")}
-                {renderSelectField("diseaseExtent", "Disease Extent", formOptions.diseaseExtentOptions, "Select disease extent")}
-                {renderSelectField("postSurgeryAnalysis", "Post-Surgery Analysis", formOptions.postSurgeryAnalysisOptions, "Select post-surgery analysis")}
-              </div>
-              
-              <Separator className="my-8" />
-              <h3 className="text-xl font-semibold font-headline text-foreground/90">Cancer Specific Details</h3>
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-md bg-muted/20">
-                {renderStringSelectField("surgicalProcedure", "Surgical Procedure", getDynamicOptions("surgicalProcedureOptions"), "Select surgical procedure")}
-                {renderStringSelectField("lymphNodeAssessment", "Lymph Node Assessment", getDynamicOptions("lymphNodeAssessmentOptions"), "Select lymph node assessment")}
-              </div>
-
-              <Separator className="my-8" />
-              <h3 className="text-xl font-semibold font-headline text-foreground/90">Report Findings</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-md bg-muted/20">
-                {renderStringSelectField("tumorType", "Tumor Type", getDynamicOptions("tumorTypeOptions"), "Select tumor type")}
-                {renderStringSelectField("grade", "Grade", getDynamicOptions("gradeOptions"), "Select grade")}
-                {renderStringSelectField("tStage", "T Stage", getDynamicOptions("tStageOptions"), "Select T Stage")}
-                {renderStringSelectField("nStage", "N Stage", getDynamicOptions("nStageOptions"), "Select N Stage")}
+    <>
+      <div className="space-y-8">
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-3xl font-headline text-primary">Case Assessment</CardTitle>
+            <CardDescription>Enter patient case details. Recommendation will be based on (simulated) uploaded NCCN guideline documents specific to the cancer type.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {renderSelectField("cancerType", "Cancer Type", formOptions.cancerTypeOptions, "Select cancer type")}
+                  {renderSelectField("diagnosticConfirmation", "Diagnostic Confirmation", formOptions.diagnosticConfirmationOptions, "Select confirmation")}
+                  {renderSelectField("stagingEvaluation", "Staging Evaluation", formOptions.stagingEvaluationOptions, "Select staging status")}
+                  {renderSelectField("diseaseExtent", "Disease Extent", formOptions.diseaseExtentOptions, "Select disease extent")}
+                  {renderSelectField("postSurgeryAnalysis", "Post-Surgery Analysis", formOptions.postSurgeryAnalysisOptions, "Select post-surgery analysis")}
+                </div>
                 
-                {showVascularInvasionField && (
-                  <FormField
-                    control={form.control}
-                    name="vascularLymphaticInvasion"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm col-span-1 md:col-span-2 bg-background">
-                        <div className="space-y-0.5">
-                          <FormLabel>Vascular/Lymphatic Invasion (T3N0 Colon/Rectal)</FormLabel>
-                          <FormMessage />
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={!watchedCancerType}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                )}
-              </div>
-              
-              <Button type="submit" disabled={isLoading || !watchedCancerType} className="w-full sm:w-auto">
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  "Create Treatment Recommendation"
-                )}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+                <Separator className="my-8" />
+                <h3 className="text-xl font-semibold font-headline text-foreground/90">Cancer Specific Details</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-md bg-muted/20">
+                  {renderStringSelectField("surgicalProcedure", "Surgical Procedure", getDynamicOptions("surgicalProcedureOptions"), "Select surgical procedure")}
+                  {renderStringSelectField("lymphNodeAssessment", "Lymph Node Assessment", getDynamicOptions("lymphNodeAssessmentOptions"), "Select lymph node assessment")}
+                </div>
 
-      {recommendationOutput && currentFormInputForDisplay && <RecommendationDisplay formData={currentFormInputForDisplay} recommendationOutput={recommendationOutput} />}
-    </div>
+                <Separator className="my-8" />
+                <h3 className="text-xl font-semibold font-headline text-foreground/90">Report Findings</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-md bg-muted/20">
+                  {renderStringSelectField("tumorType", "Tumor Type", getDynamicOptions("tumorTypeOptions"), "Select tumor type")}
+                  {renderStringSelectField("grade", "Grade", getDynamicOptions("gradeOptions"), "Select grade")}
+                  {renderStringSelectField("tStage", "T Stage", getDynamicOptions("tStageOptions"), "Select T Stage")}
+                  {renderStringSelectField("nStage", "N Stage", getDynamicOptions("nStageOptions"), "Select N Stage")}
+                  
+                  {showVascularInvasionField && (
+                    <FormField
+                      control={form.control}
+                      name="vascularLymphaticInvasion"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm col-span-1 md:col-span-2 bg-background">
+                          <div className="space-y-0.5">
+                            <FormLabel>Vascular/Lymphatic Invasion (T3N0 Colon/Rectal)</FormLabel>
+                            <FormMessage />
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={!watchedCancerType}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+                
+                <Button type="submit" disabled={isLoading || !watchedCancerType} className="w-full sm:w-auto">
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    "Create Treatment Recommendation"
+                  )}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+
+        {recommendationOutput && currentFormInputForDisplay && <RecommendationDisplay formData={currentFormInputForDisplay} recommendationOutput={recommendationOutput} />}
+      </div>
+      <AlertDialog
+        open={dialogState.open}
+        onOpenChange={(open) => setDialogState({ ...dialogState, open })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Guideline Not Available</AlertDialogTitle>
+            <AlertDialogDescription>
+              The system is not equipped with proper recommendations for{' '}
+              <strong className="text-primary">{dialogState.cancerType}</strong>. 
+              Do you want to share proper and recommended guidelines?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, choose different type</AlertDialogCancel>
+            <AlertDialogAction onClick={() => router.push('/upload')}>
+              Yes, upload guidelines
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
-
-    
