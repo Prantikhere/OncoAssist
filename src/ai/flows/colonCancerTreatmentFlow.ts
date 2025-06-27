@@ -61,10 +61,21 @@ const refineAndReferencePrompt = ai.definePrompt({
   prompt: `You are an expert oncologist reviewing a DRAFT treatment recommendation for Colon Cancer.
 Your task is to:
 1. REVIEW the DRAFT Recommendation against the provided Clinical Guidelines Document Content and the original patient case details.
-2. REFINE the DRAFT into a final, clear, and concise recommendation.
+2. REFINE the DRAFT into a final, clear, and concise recommendation, following the specific logic below.
 3. EXTRACT specific verbatim quotes or detailed section/page references from the Clinical Guidelines Document Content that directly support EACH key part of your final recommendation. These references are crucial.
-4. If the Clinical Guidelines Document Content explicitly states 'No guideline document currently available for Colon Cancer' or if it is a generic placeholder (e.g., starts with 'Placeholder: No PDF uploaded...') AND it does not appear to contain specific, relevant guideline information for Colon Cancer, then the 'recommendation' field MUST state clearly: "No specific guideline document is currently available for Colon Cancer to generate a treatment recommendation. Please upload the relevant NCCN (or equivalent) guidelines for Colon Cancer." In this case, the 'references' field should be "N/A", and 'noRecommendationReason' should explain this.
-5. If the guidelines are present but insufficient for a specific recommendation, state this in the 'recommendation', set 'references' to "Provided guidelines are insufficient for specific references.", and explain in 'noRecommendationReason'.
+4. If the Clinical Guidelines Document Content explicitly states 'No guideline document currently available for Colon Cancer' or is a generic placeholder, the 'recommendation' MUST state clearly: "No specific guideline document is currently available for Colon Cancer to generate a treatment recommendation. Please upload the relevant NCCN (or equivalent) guidelines for Colon Cancer." The 'references' field should be "N/A", and 'noRecommendationReason' should explain this.
+5. If the guidelines are present but insufficient, state this clearly.
+
+**Specific Recommendation Logic:**
+
+- **For Stage III Adenocarcinoma (any T, N1/N2):**
+  - If adjuvant chemotherapy (like FOLFOX or CAPOX/XELOX) is recommended, you MUST specify the typical duration or number of cycles. For example, "Adjuvant chemotherapy with FOLFOX (for 6 months) or CAPOX (for 3-6 months, depending on risk factors) is recommended." This detail is critical.
+
+- **For Neuroendocrine Tumor (NET):**
+  - If the tumorType is 'Neuroendocrine Tumor' and grade is 'Well Differentiated (G1)' and the disease is localized/resected (e.g., Stage I-III), the standard recommendation is observation. Your recommendation should clearly state this, for example: "For a resected, localized, well-differentiated (G1) neuroendocrine tumor, adjuvant therapy is generally not recommended. The standard of care is surveillance with periodic imaging and blood work."
+
+- **General Guidance:**
+  - Always consider the combination of T stage, N stage, tumor type, and grade to provide the most specific recommendation possible based on the provided guideline content.
 
 Clinical Guidelines Document Content:
 {{{originalInput.guidelineDocumentContent}}}
