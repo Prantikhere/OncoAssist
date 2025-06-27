@@ -80,6 +80,9 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [recommendationOutput, setRecommendationOutput] = useState<CancerTreatmentOutput | null>(null);
   const [currentFormInputForDisplay, setCurrentFormInputForDisplay] = useState<AllTreatmentInput | null>(null);
+  const [lastSubmittedValues, setLastSubmittedValues] = useState<CaseFormValues | null>(null);
+  const [isRecommendationFinalized, setIsRecommendationFinalized] = useState(false);
+  
   const [dialogState, setDialogState] = useState<{ open: boolean; cancerType: string }>({
     open: false,
     cancerType: '',
@@ -126,10 +129,26 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     watchedTStage === 'T3' && 
     watchedNStage === 'N0';
 
+  const handleAccept = () => {
+    setIsRecommendationFinalized(true);
+    toast({
+      title: "Recommendation Accepted",
+      description: "The current recommendation has been marked as accepted.",
+    });
+  };
+
+  const handleRegenerate = () => {
+    if (lastSubmittedValues) {
+      onSubmit(lastSubmittedValues);
+    }
+  };
+
   async function onSubmit(values: CaseFormValues) {
     setIsLoading(true);
     setRecommendationOutput(null);
     setCurrentFormInputForDisplay(null);
+    setLastSubmittedValues(values);
+    setIsRecommendationFinalized(false);
     
     const availableGuidelines: Record<string, boolean> = {
         'Colon Cancer': true,
@@ -427,7 +446,16 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
           </CardContent>
         </Card>
 
-        {recommendationOutput && currentFormInputForDisplay && <RecommendationDisplay formData={currentFormInputForDisplay} recommendationOutput={recommendationOutput} />}
+        {recommendationOutput && currentFormInputForDisplay && (
+          <RecommendationDisplay 
+            formData={currentFormInputForDisplay} 
+            recommendationOutput={recommendationOutput}
+            onAccept={handleAccept}
+            onRegenerate={handleRegenerate}
+            isFinalized={isRecommendationFinalized}
+            isRegenerating={isLoading}
+          />
+        )}
       </div>
       <AlertDialog
         open={dialogState.open}
@@ -453,5 +481,3 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     </>
   );
 }
-
-    

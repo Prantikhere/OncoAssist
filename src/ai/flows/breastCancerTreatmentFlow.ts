@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview Generates a Breast Cancer treatment recommendation, primarily handling cases with missing guidelines.
+ * @fileOverview Generates a Breast Cancer treatment recommendation with a direct, single-prompt approach.
  *
  * - diagnoseBreastCancer - A function that handles the Breast Cancer diagnosis and recommendation process.
  * - BreastCancerTreatmentInput - The input type (defined in treatmentFlowTypes.ts).
@@ -17,24 +17,20 @@ import {
   type CancerTreatmentOutput 
 } from './treatmentFlowTypes';
 
-// Simplified prompt for Breast Cancer, focusing on guideline availability
-const breastCancerPrompt = ai.definePrompt({
-  name: 'breastCancerGuidelineCheckPrompt',
+// A single, comprehensive prompt to generate the final recommendation and references directly.
+const breastCancerTreatmentPrompt = ai.definePrompt({
+  name: 'breastCancerTreatmentPrompt',
   input: { schema: BreastCancerTreatmentInputSchema },
   output: { schema: CancerTreatmentOutputSchema },
-  prompt: `You are an AI assistant for oncologists.
-The user has provided case details for Breast Cancer and the content of a clinical guideline document.
+  prompt: `You are an expert oncologist AI specializing in Breast Cancer. Your task is to generate a final, clear, and concise treatment recommendation and extract supporting references.
 
-Your primary task is to check the 'guidelineDocumentContent'.
-IF the 'guidelineDocumentContent' explicitly states 'No guideline document currently available for Breast Cancer' OR if it is a generic placeholder (e.g., starts with 'Placeholder: No PDF uploaded...') AND it does not appear to contain specific, relevant guideline information for Breast Cancer,
-THEN:
-  - The 'recommendation' field MUST state clearly: "No specific guideline document is currently available for Breast Cancer to generate a treatment recommendation. Please upload the relevant NCCN (or equivalent) guidelines for Breast Cancer."
-  - The 'references' field MUST be "N/A".
-  - The 'noRecommendationReason' field MUST explain that the specific guidelines for Breast Cancer were not provided.
-ELSE (if relevant guideline content seems to be provided, even if simulated but specific to Breast Cancer):
-  - Generate a concise, preliminary recommendation based SOLELY on this provided content and the patient's case details. Do not use any external knowledge.
-  - For 'references', state "References to be fully implemented based on specific guideline content." or extract key phrases if obvious.
-  - 'noRecommendationReason' can be omitted or state "Recommendation based on simulated guidelines."
+**CRITICAL INSTRUCTIONS:**
+1.  Your entire response MUST be based EXCLUSIVELY on the information within the provided "Clinical Guidelines Document Content". Do NOT use any external knowledge.
+2.  If the guideline content explicitly states it's unavailable, is a generic placeholder, or does not contain specific information for Breast Cancer, you MUST state this clearly in the 'recommendation' field and set 'references' to "N/A". Your 'noRecommendationReason' field should explain that the specific guidelines for Breast Cancer were not provided.
+3.  If the guideline content appears relevant, generate a concise, preliminary recommendation based SOLELY on the provided content and the patient's case details.
+4.  EXTRACT specific verbatim quotes or detailed section/page references from the guideline content that directly support EACH key part of your final recommendation. These references are crucial.
+
+**INPUTS:**
 
 Clinical Guidelines Document Content:
 {{{guidelineDocumentContent}}}
@@ -57,7 +53,8 @@ Vascular/Lymphatic Invasion: Yes
 Vascular/Lymphatic Invasion: No
 {{/if}}
 
-Provide your output in the specified JSON format.`,
+Provide your final output in the specified JSON format with fields: 'recommendation', 'references', and 'noRecommendationReason' (if applicable).
+For 'references', list each quote or reference clearly. Example: "Guideline Section X.Y states: '...quote...'. Page Z, Paragraph A recommends '...quote...'."`,
 });
 
 const breastCancerTreatmentFlow = ai.defineFlow(
@@ -67,20 +64,27 @@ const breastCancerTreatmentFlow = ai.defineFlow(
     outputSchema: CancerTreatmentOutputSchema,
   },
   async (input) => {
-    const { output } = await breastCancerPrompt(input);
+    // Handle placeholder guideline content upfront for early exit
+    if (input.guidelineDocumentContent.startsWith("Placeholder: No PDF uploaded") || 
+        input.guidelineDocumentContent.includes("No guideline document currently available for Breast Cancer")) {
+        return {
+            recommendation: "No specific guideline document is currently available for Breast Cancer to generate a treatment recommendation. Please upload the relevant NCCN (or equivalent) guidelines for Breast Cancer.",
+            references: "N/A",
+            noRecommendationReason: "Guideline document for Breast Cancer is unavailable or a placeholder was provided."
+        };
+    }
+
+    const { output } = await breastCancerTreatmentPrompt(input);
+
     if (!output) {
       return {
-        recommendation: "Error: AI model did not return an output for Breast Cancer.",
+        recommendation: "Failed to generate a recommendation. The AI model may have not returned the expected output.",
         references: "N/A",
-        noRecommendationReason: "AI model processing error."
+        noRecommendationReason: "Error in AI model processing."
       };
     }
-    // Ensure all fields are present, even if some are default/fallback values from the prompt's logic
-    return {
-        recommendation: output.recommendation || "No recommendation generated.",
-        references: output.references || (output.noRecommendationReason ? "N/A" : "No specific references extracted."),
-        noRecommendationReason: output.noRecommendationReason
-    };
+    
+    return output;
   }
 );
 

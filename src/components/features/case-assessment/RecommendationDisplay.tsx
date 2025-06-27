@@ -2,8 +2,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Download, CheckCircle, RefreshCw, Loader2 } from "lucide-react";
 import type { AllTreatmentInput, CancerTreatmentOutput } from "@/ai/flows"; // Assuming index.ts in flows
 import jsPDF from 'jspdf';
 import { Separator } from "@/components/ui/separator";
@@ -11,9 +11,20 @@ import { Separator } from "@/components/ui/separator";
 interface RecommendationDisplayProps {
   formData: AllTreatmentInput | null; // formData now reflects AllTreatmentInput
   recommendationOutput: CancerTreatmentOutput | null;
+  onAccept: () => void;
+  onRegenerate: () => void;
+  isFinalized: boolean;
+  isRegenerating: boolean;
 }
 
-export function RecommendationDisplay({ formData, recommendationOutput }: RecommendationDisplayProps) {
+export function RecommendationDisplay({ 
+  formData, 
+  recommendationOutput,
+  onAccept,
+  onRegenerate,
+  isFinalized,
+  isRegenerating 
+}: RecommendationDisplayProps) {
   if (!recommendationOutput || !formData) {
     return null;
   }
@@ -119,12 +130,36 @@ export function RecommendationDisplay({ formData, recommendationOutput }: Recomm
             <p className="text-sm text-muted-foreground">Supporting References: {references}</p>
           </>
         )}
-
-        <Button onClick={handleDownloadReport} className="mt-6 w-full sm:w-auto" variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Download Report (PDF)
-        </Button>
       </CardContent>
+      <CardFooter className="flex justify-between items-center pt-6 bg-muted/50 p-4 border-t">
+        <Button onClick={handleDownloadReport} variant="outline">
+          <Download className="mr-2 h-4 w-4" />
+          Download Report
+        </Button>
+
+        <div className="flex items-center gap-2">
+          {isFinalized ? (
+            <div className="flex items-center text-green-600 font-medium">
+              <CheckCircle className="mr-2 h-5 w-5" />
+              <span>Accepted</span>
+            </div>
+          ) : (
+            <>
+              <Button onClick={onAccept}>
+                Accept
+              </Button>
+              <Button onClick={onRegenerate} variant="destructive" disabled={isRegenerating}>
+                {isRegenerating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                Regenerate
+              </Button>
+            </>
+          )}
+        </div>
+      </CardFooter>
     </Card>
   );
 }
