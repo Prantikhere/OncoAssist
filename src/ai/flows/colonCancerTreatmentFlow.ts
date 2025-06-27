@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview Generates a Colon Cancer treatment recommendation with iterative refinement and document referencing.
+ * @fileOverview Generates a Colon Cancer treatment recommendation with a direct, single-prompt approach.
  *
  * - diagnoseColonCancer - A function that handles the Colon Cancer diagnosis and recommendation process.
  * - ColonCancerTreatmentInput - The input type (defined in treatmentFlowTypes.ts).
@@ -17,14 +17,23 @@ import {
   type CancerTreatmentOutput 
 } from './treatmentFlowTypes';
 
-// Step 1: Draft Recommendation Prompt
-const draftPrompt = ai.definePrompt({
-  name: 'colonCancerDraftPrompt',
+// A single, comprehensive prompt to generate the final recommendation and references directly.
+const colonCancerTreatmentPrompt = ai.definePrompt({
+  name: 'colonCancerTreatmentPrompt',
   input: { schema: ColonCancerTreatmentInputSchema },
-  output: { schema: z.object({ draftRecommendation: z.string() }) },
-  prompt: `You are an expert oncologist specializing in Colon Cancer.
-Based on the following patient case details and the provided Clinical Guidelines Document Content, generate a DRAFT treatment recommendation.
-Your DRAFT should be concise and directly address the key aspects of the case based SOLELY on the guidelines. Do not use any external knowledge or information outside of the provided document.
+  output: { schema: CancerTreatmentOutputSchema },
+  prompt: `You are an expert oncologist AI specializing in Colon Cancer. Your task is to generate a final, clear, and concise treatment recommendation and extract supporting references.
+
+**CRITICAL INSTRUCTIONS:**
+1.  Your entire response MUST be based EXCLUSIVELY on the information within the provided "Clinical Guidelines Document Content". Do NOT use any external knowledge.
+2.  If the guideline content explicitly states it's unavailable or is a placeholder, you must state this clearly in the 'recommendation' field and set 'references' to "N/A".
+3.  EXTRACT specific verbatim quotes or detailed section/page references from the guideline content that directly support EACH key part of your final recommendation. These references are crucial.
+
+**SPECIFIC RECOMMENDATION LOGIC TO APPLY:**
+- **For Stage III Adenocarcinoma (any T, N1/N2):** If adjuvant chemotherapy (like FOLFOX or CAPOX/XELOX) is recommended by the guidelines, you MUST specify the typical duration or number of cycles mentioned in the document. For example, "Adjuvant chemotherapy with FOLFOX (for 6 months) or CAPOX (for 3-6 months) is recommended." This detail is critical.
+- **For Neuroendocrine Tumor (NET):** If the tumorType is 'Neuroendocrine Tumor', grade is 'Well Differentiated (G1)', and the disease is localized/resected, the standard recommendation is surveillance if the guidelines support it. Your recommendation should clearly state this, for example: "For a resected, localized, well-differentiated (G1) neuroendocrine tumor, adjuvant therapy is generally not recommended. The standard of care is surveillance."
+
+**INPUTS:**
 
 Clinical Guidelines Document Content:
 {{{guidelineDocumentContent}}}
@@ -47,64 +56,10 @@ Vascular/Lymphatic Invasion: Yes
 Vascular/Lymphatic Invasion: No
 {{/if}}
 
-Provide only the DRAFT recommendation text.`,
+Provide your final output in the specified JSON format with fields: 'recommendation', 'references', and 'noRecommendationReason' (if applicable).
+For 'references', list each quote or reference clearly. Example: "Guideline Section X.Y states: '...quote...'. Page Z, Paragraph A recommends '...quote...'."`,
 });
 
-// Step 2: Refine Recommendation and Extract References Prompt
-const refineAndReferencePrompt = ai.definePrompt({
-  name: 'colonCancerRefineAndReferencePrompt',
-  input: { schema: z.object({ 
-    draftRecommendation: z.string(), 
-    originalInput: ColonCancerTreatmentInputSchema 
-  }) },
-  output: { schema: CancerTreatmentOutputSchema },
-  prompt: `You are an expert oncologist reviewing a DRAFT treatment recommendation for Colon Cancer.
-Your task is to:
-1. REVIEW the DRAFT Recommendation against the provided Clinical Guidelines Document Content and the original patient case details.
-2. REFINE the DRAFT into a final, clear, and concise recommendation, following the specific logic below. Your final recommendation must be derived EXCLUSIVELY from the information within the provided guideline document.
-3. EXTRACT specific verbatim quotes or detailed section/page references from the Clinical Guidelines Document Content that directly support EACH key part of your final recommendation. These references are crucial.
-4. If the Clinical Guidelines Document Content explicitly states 'No guideline document currently available for Colon Cancer' or is a generic placeholder, the 'recommendation' MUST state clearly: "No specific guideline document is currently available for Colon Cancer to generate a treatment recommendation. Please upload the relevant NCCN (or equivalent) guidelines for Colon Cancer." The 'references' field should be "N/A", and 'noRecommendationReason' should explain this.
-5. If the guidelines are present but insufficient, state this clearly.
-
-**Specific Recommendation Logic:**
-
-- **For Stage III Adenocarcinoma (any T, N1/N2):**
-  - If adjuvant chemotherapy (like FOLFOX or CAPOX/XELOX) is recommended, you MUST specify the typical duration or number of cycles. For example, "Adjuvant chemotherapy with FOLFOX (for 6 months) or CAPOX (for 3-6 months, depending on risk factors) is recommended." This detail is critical.
-
-- **For Neuroendocrine Tumor (NET):**
-  - If the tumorType is 'Neuroendocrine Tumor' and grade is 'Well Differentiated (G1)' and the disease is localized/resected (e.g., Stage I-III), the standard recommendation is observation. Your recommendation should clearly state this, for example: "For a resected, localized, well-differentiated (G1) neuroendocrine tumor, adjuvant therapy is generally not recommended. The standard of care is surveillance with periodic imaging and blood work."
-
-- **General Guidance:**
-  - Always consider the combination of T stage, N stage, tumor type, and grade to provide the most specific recommendation possible based on the provided guideline content.
-
-Clinical Guidelines Document Content:
-{{{originalInput.guidelineDocumentContent}}}
-
-Original Patient Case Details for Colon Cancer:
-Cancer Type: {{{originalInput.cancerType}}}
-Diagnostic Confirmation: {{{originalInput.diagnosticConfirmation}}}
-Staging Evaluation: {{{originalInput.stagingEvaluation}}}
-Disease Extent: {{{originalInput.diseaseExtent}}}
-Surgical Procedure: {{{originalInput.surgicalProcedure}}}
-Lymph Node Assessment: {{{originalInput.lymphNodeAssessment}}}
-Post-Surgery Analysis: {{{originalInput.postSurgeryAnalysis}}}
-Tumor Type: {{{originalInput.tumorType}}}
-Grade: {{{originalInput.grade}}}
-T Stage: {{{originalInput.tStage}}}
-N Stage: {{{originalInput.nStage}}}
-{{#if originalInput.vascularLymphaticInvasion}}
-Vascular/Lymphatic Invasion: Yes
-{{else}}
-Vascular/Lymphatic Invasion: No
-{{/if}}
-
-DRAFT Recommendation to Review:
-"{{{draftRecommendation}}}"
-
-Provide your output in the specified JSON format with fields: 'recommendation', 'references', and 'noRecommendationReason' (if applicable).
-For 'references', list each quote or reference clearly. Example: "Guideline Section X.Y states: '...quote...'. Page Z, Paragraph A recommends '...quote...'."
-`,
-});
 
 // The Flow
 const colonCancerTreatmentFlow = ai.defineFlow(
@@ -124,25 +79,18 @@ const colonCancerTreatmentFlow = ai.defineFlow(
         };
     }
 
-    // Step 1: Generate Draft
-    const draftResponse = await draftPrompt(input);
-    const draftRecommendation = draftResponse.output?.draftRecommendation;
+    // Step 1: Generate the final recommendation and references in a single call.
+    const { output } = await colonCancerTreatmentPrompt(input);
 
-    if (!draftRecommendation) {
+    if (!output) {
       return {
-        recommendation: "Failed to generate a draft recommendation. The AI model may have not returned the expected output.",
+        recommendation: "Failed to generate a recommendation. The AI model may have not returned the expected output.",
         references: "N/A",
-        noRecommendationReason: "Error in initial draft generation step."
+        noRecommendationReason: "Error in AI model processing."
       };
     }
-
-    // Step 2: Refine and Extract References
-    const finalResponse = await refineAndReferencePrompt({ 
-      draftRecommendation, 
-      originalInput: input 
-    });
     
-    return finalResponse.output!; // Output schema should match CancerTreatmentOutputSchema
+    return output;
   }
 );
 
