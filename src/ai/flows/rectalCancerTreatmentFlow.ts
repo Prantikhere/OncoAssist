@@ -31,7 +31,7 @@ THEN:
   - The 'references' field MUST be "N/A".
   - The 'noRecommendationReason' field MUST explain that the specific guidelines for Rectal Cancer were not provided.
 ELSE (if relevant guideline content seems to be provided, even if simulated but specific to Rectal Cancer):
-  - Generate a concise, preliminary recommendation based SOLELY on this provided content and the patient's case details.
+  - Generate a concise, preliminary recommendation based SOLELY on this provided content and the patient's case details. Do not use any external knowledge.
   - For 'references', state "References to be fully implemented based on specific guideline content." or extract key phrases if obvious.
   - 'noRecommendationReason' can be omitted or state "Recommendation based on simulated guidelines."
 

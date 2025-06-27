@@ -26,7 +26,7 @@ export const BaseTreatmentInputSchema = z.object({
 });
 
 export const CancerTreatmentOutputSchema = z.object({
-  recommendation: z.string().describe('Recommended treatment based SOLELY on the provided guideline document content and case details. If no specific recommendation can be made due to unavailable/insufficient guidelines, this field should state that clearly (e.g., "No recommendation can be provided...").'),
+  recommendation: z.string().describe('Recommended treatment based SOLELY on the provided guideline document content and case details. The recommendation must not be based on any external knowledge outside of the provided document. If no specific recommendation can be made due to unavailable/insufficient guidelines, this field should state that clearly (e.g., "No recommendation can be provided...").'),
   references: z.string().optional().describe('Direct quotes or specific section references from the guideline document supporting the recommendation. If no specific references apply or can be extracted, this may be omitted or explicitly state "No specific references extracted." If guidelines were unavailable, this should be "N/A".'),
   noRecommendationReason: z.string().optional().describe('Reason why no recommendation (or only a general statement) could be made, if applicable (e.g., "Guideline document for [CancerType] is unavailable.", "Provided guideline content is insufficient for a specific recommendation."). This field clarifies situations where the `recommendation` field might be non-specific.')
 });
@@ -58,4 +58,3 @@ export type AllTreatmentInput =
   Omit<RectalCancerTreatmentInput, 'guidelineDocumentContent'> & { cancerType: 'Rectal Cancer'; guidelineDocumentContent: string } |
   Omit<BreastCancerTreatmentInput, 'guidelineDocumentContent'> & { cancerType: 'Breast Cancer'; guidelineDocumentContent: string } |
   Omit<OtherCancerTreatmentInput, 'guidelineDocumentContent'> & { cancerType: 'Other'; guidelineDocumentContent: string };
-

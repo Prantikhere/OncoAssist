@@ -24,7 +24,7 @@ const draftPrompt = ai.definePrompt({
   output: { schema: z.object({ draftRecommendation: z.string() }) },
   prompt: `You are an expert oncologist specializing in Colon Cancer.
 Based on the following patient case details and the provided Clinical Guidelines Document Content, generate a DRAFT treatment recommendation.
-Your DRAFT should be concise and directly address the key aspects of the case based on the guidelines.
+Your DRAFT should be concise and directly address the key aspects of the case based SOLELY on the guidelines. Do not use any external knowledge or information outside of the provided document.
 
 Clinical Guidelines Document Content:
 {{{guidelineDocumentContent}}}
@@ -61,7 +61,7 @@ const refineAndReferencePrompt = ai.definePrompt({
   prompt: `You are an expert oncologist reviewing a DRAFT treatment recommendation for Colon Cancer.
 Your task is to:
 1. REVIEW the DRAFT Recommendation against the provided Clinical Guidelines Document Content and the original patient case details.
-2. REFINE the DRAFT into a final, clear, and concise recommendation, following the specific logic below.
+2. REFINE the DRAFT into a final, clear, and concise recommendation, following the specific logic below. Your final recommendation must be derived EXCLUSIVELY from the information within the provided guideline document.
 3. EXTRACT specific verbatim quotes or detailed section/page references from the Clinical Guidelines Document Content that directly support EACH key part of your final recommendation. These references are crucial.
 4. If the Clinical Guidelines Document Content explicitly states 'No guideline document currently available for Colon Cancer' or is a generic placeholder, the 'recommendation' MUST state clearly: "No specific guideline document is currently available for Colon Cancer to generate a treatment recommendation. Please upload the relevant NCCN (or equivalent) guidelines for Colon Cancer." The 'references' field should be "N/A", and 'noRecommendationReason' should explain this.
 5. If the guidelines are present but insufficient, state this clearly.
