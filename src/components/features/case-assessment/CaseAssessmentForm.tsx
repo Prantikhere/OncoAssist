@@ -131,7 +131,6 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     setRecommendationOutput(null);
     setCurrentFormInputForDisplay(null);
     
-    // Simulate which guidelines are available. Only 'Colon Cancer' has one.
     const availableGuidelines: Record<string, boolean> = {
         'Colon Cancer': true,
     };
@@ -139,7 +138,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     if (values.cancerType !== 'Other' && !availableGuidelines[values.cancerType]) {
         setDialogState({ open: true, cancerType: values.cancerType });
         setIsLoading(false);
-        return; // Stop submission
+        return;
     }
 
     let guidelineDocumentContent: string;
@@ -148,7 +147,18 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     let submissionData: AllTreatmentInput;
     switch (values.cancerType) {
       case 'Colon Cancer':
-        guidelineDocumentContent = `Simulated NCCN (or equivalent) guideline content for Colon Cancer is being used. Base recommendation strictly on this content. If this simulated content is insufficient, state so. Focus on identifying direct quotes or section references if possible.`;
+        guidelineDocumentContent = `
+        Simulated NCCN Guideline for Colon Cancer:
+        - Section: Adjuvant Therapy for Stage III Disease
+          - For resected Stage III colon cancer (any T, N1-2), adjuvant chemotherapy is the standard of care.
+          - Standard regimens include FOLFOX for 6 months or CAPOX for 3-6 months.
+          - For low-risk Stage III (T1-3, N1), 3 months of CAPOX is an option. 
+          - For high-risk Stage III (T4 or N2), 6 months of either FOLFOX or CAPOX is recommended.
+        - Section: Management of Neuroendocrine Tumors (NETs)
+          - For localized, well-differentiated (G1/G2) NETs that have been completely resected, the standard of care is surveillance. Adjuvant therapy is not typically recommended.
+        - Section: General Principles
+          - Recommendations must be based on the patient's performance status and comorbidities.
+        `;
         submissionData = { ...submissionValues, cancerType: 'Colon Cancer', guidelineDocumentContent };
         break;
       case 'Rectal Cancer':
@@ -184,7 +194,6 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
           result = await diagnoseOtherCancer(submissionData as Extract<AllTreatmentInput, { cancerType: 'Other' }>);
           break;
         default:
-          // This should be unreachable if form validation and switch cases are exhaustive
           const exhaustiveCheck: never = submissionData; 
           throw new Error(`Unsupported cancer type: ${(exhaustiveCheck as any).cancerType}`);
       }
@@ -227,50 +236,50 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
   }
   
   const getDynamicOptions = (fieldName: string): { value: string; label: string; disabled?: boolean }[] => {
-    const cancerDependentFields = [
-      "tumorTypeOptions", "gradeOptions", "surgicalProcedureOptions",
-      "lymphNodeAssessmentOptions", "tStageOptions", "nStageOptions"
-    ];
-
-    if (!watchedCancerType && cancerDependentFields.includes(fieldName)) {
-      return []; // Return empty options if cancer type not selected for dependent fields
+    if (!watchedCancerType) {
+      return [];
     }
-
-    switch (watchedCancerType) {
-      case 'Colon Cancer':
-        if (fieldName === 'tumorTypeOptions') return formOptions.colonTumorTypeOptions;
-        if (fieldName === 'gradeOptions') return formOptions.colonGradeOptions;
-        if (fieldName === 'surgicalProcedureOptions') return formOptions.colonSurgicalProcedureOptions;
-        if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.colonLymphNodeAssessmentOptions;
-        if (fieldName === 'tStageOptions') return formOptions.colonTStageOptions;
-        if (fieldName === 'nStageOptions') return formOptions.colonNStageOptions;
-        break;
-      case 'Rectal Cancer':
-        if (fieldName === 'tumorTypeOptions') return formOptions.rectalTumorTypeOptions;
-        if (fieldName === 'gradeOptions') return formOptions.rectalGradeOptions;
-        if (fieldName === 'surgicalProcedureOptions') return formOptions.rectalSurgicalProcedureOptions;
-        if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.rectalLymphNodeAssessmentOptions;
-        if (fieldName === 'tStageOptions') return formOptions.rectalTStageOptions;
-        if (fieldName === 'nStageOptions') return formOptions.rectalNStageOptions;
-        break;
-      case 'Breast Cancer':
-        if (fieldName === 'tumorTypeOptions') return formOptions.breastTumorTypeOptions;
-        if (fieldName === 'gradeOptions') return formOptions.breastGradeOptions;
-        if (fieldName === 'surgicalProcedureOptions') return formOptions.breastSurgicalProcedureOptions;
-        if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.breastLymphNodeAssessmentOptions;
-        if (fieldName === 'tStageOptions') return formOptions.breastTStageOptions;
-        if (fieldName === 'nStageOptions') return formOptions.breastNStageOptions;
-        break;
-      case 'Other':
-        if (fieldName === 'tumorTypeOptions') return formOptions.otherCancerTumorTypeOptions;
-        if (fieldName === 'gradeOptions') return formOptions.otherCancerGradeOptions;
-        if (fieldName === 'surgicalProcedureOptions') return formOptions.otherCancerSurgicalProcedureOptions;
-        if (fieldName === 'lymphNodeAssessmentOptions') return formOptions.otherCancerLymphNodeAssessmentOptions;
-        if (fieldName === 'tStageOptions') return formOptions.otherCancerTStageOptions;
-        if (fieldName === 'nStageOptions') return formOptions.otherCancerNStageOptions;
-        break;
-    }
-    return []; // Default to empty array if no match or cancer type not set for a dependent field
+    
+    const optionsMap = {
+      'Colon Cancer': {
+        tumorTypeOptions: formOptions.colonTumorTypeOptions,
+        gradeOptions: formOptions.colonGradeOptions,
+        surgicalProcedureOptions: formOptions.colonSurgicalProcedureOptions,
+        lymphNodeAssessmentOptions: formOptions.colonLymphNodeAssessmentOptions,
+        tStageOptions: formOptions.colonTStageOptions,
+        nStageOptions: formOptions.colonNStageOptions,
+      },
+      'Rectal Cancer': {
+        tumorTypeOptions: formOptions.rectalTumorTypeOptions,
+        gradeOptions: formOptions.rectalGradeOptions,
+        surgicalProcedureOptions: formOptions.rectalSurgicalProcedureOptions,
+        lymphNodeAssessmentOptions: formOptions.rectalLymphNodeAssessmentOptions,
+        tStageOptions: formOptions.rectalTStageOptions,
+        nStageOptions: formOptions.rectalNStageOptions,
+      },
+      'Breast Cancer': {
+        tumorTypeOptions: formOptions.breastTumorTypeOptions,
+        gradeOptions: formOptions.breastGradeOptions,
+        surgicalProcedureOptions: formOptions.breastSurgicalProcedureOptions,
+        lymphNodeAssessmentOptions: formOptions.breastLymphNodeAssessmentOptions,
+        tStageOptions: formOptions.breastTStageOptions,
+        nStageOptions: formOptions.breastNStageOptions,
+      },
+      'Other': {
+        tumorTypeOptions: formOptions.otherCancerTumorTypeOptions,
+        gradeOptions: formOptions.otherCancerGradeOptions,
+        surgicalProcedureOptions: formOptions.otherCancerSurgicalProcedureOptions,
+        lymphNodeAssessmentOptions: formOptions.otherCancerLymphNodeAssessmentOptions,
+        tStageOptions: formOptions.otherCancerTStageOptions,
+        nStageOptions: formOptions.otherCancerNStageOptions,
+      },
+    };
+    
+    // This type assertion is safe because watchedCancerType is one of the keys of optionsMap
+    const cancerOptions = optionsMap[watchedCancerType as keyof typeof optionsMap];
+    
+    // This assertion is safe as fieldName is one of the keys in the nested objects
+    return cancerOptions[fieldName as keyof typeof cancerOptions] || [];
   };
 
 
@@ -313,7 +322,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
   const renderStringSelectField = (
     fieldName: "tumorType" | "grade" | "surgicalProcedure" | "lymphNodeAssessment" | "tStage" | "nStage", 
     label: string, 
-    options: { value: string; label: string; disabled?:boolean }[], 
+    optionsKey: string,
     placeholder: string
   ) => (
     <FormField
@@ -329,11 +338,11 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
           >
             <FormControl>
               <SelectTrigger>
-                <SelectValue placeholder={placeholder} />
+                <SelectValue placeholder={!watchedCancerType ? "Select Cancer Type first" : placeholder} />
               </SelectTrigger>
             </FormControl>
             <SelectContent>
-              {options.map((option) => (
+              {getDynamicOptions(optionsKey).map((option) => (
                 <SelectItem key={option.value} value={option.value} disabled={option.disabled}>
                   {option.label}
                 </SelectItem>
@@ -368,17 +377,17 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
                 <Separator className="my-8" />
                 <h3 className="text-xl font-semibold font-headline text-foreground/90">Cancer Specific Details</h3>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-md bg-muted/20">
-                  {renderStringSelectField("surgicalProcedure", "Surgical Procedure", getDynamicOptions("surgicalProcedureOptions"), "Select surgical procedure")}
-                  {renderStringSelectField("lymphNodeAssessment", "Lymph Node Assessment", getDynamicOptions("lymphNodeAssessmentOptions"), "Select lymph node assessment")}
+                  {renderStringSelectField("surgicalProcedure", "Surgical Procedure", "surgicalProcedureOptions", "Select surgical procedure")}
+                  {renderStringSelectField("lymphNodeAssessment", "Lymph Node Assessment", "lymphNodeAssessmentOptions", "Select lymph node assessment")}
                 </div>
 
                 <Separator className="my-8" />
                 <h3 className="text-xl font-semibold font-headline text-foreground/90">Report Findings</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-md bg-muted/20">
-                  {renderStringSelectField("tumorType", "Tumor Type", getDynamicOptions("tumorTypeOptions"), "Select tumor type")}
-                  {renderStringSelectField("grade", "Grade", getDynamicOptions("gradeOptions"), "Select grade")}
-                  {renderStringSelectField("tStage", "T Stage", getDynamicOptions("tStageOptions"), "Select T Stage")}
-                  {renderStringSelectField("nStage", "N Stage", getDynamicOptions("nStageOptions"), "Select N Stage")}
+                  {renderStringSelectField("tumorType", "Tumor Type", "tumorTypeOptions", "Select tumor type")}
+                  {renderStringSelectField("grade", "Grade", "gradeOptions", "Select grade")}
+                  {renderStringSelectField("tStage", "T Stage", "tStageOptions", "Select T Stage")}
+                  {renderStringSelectField("nStage", "N Stage", "nStageOptions", "Select N Stage")}
                   
                   {showVascularInvasionField && (
                     <FormField
@@ -444,3 +453,5 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     </>
   );
 }
+
+    
