@@ -249,5 +249,3 @@ export const otherCancerNStageOptions = [ // Generic N staging
   { value: 'NX', label: 'NX (Regional lymph nodes cannot be assessed)'},
   { value: 'Not Applicable', label: 'Not Applicable (e.g., hematologic)' },
 ];
-
-    
