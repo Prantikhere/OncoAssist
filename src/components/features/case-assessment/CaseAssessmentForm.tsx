@@ -173,6 +173,11 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
           - Standard regimens include FOLFOX for 6 months or CAPOX for 3-6 months.
           - For low-risk Stage III (T1-3, N1), 3 months of CAPOX is an option. 
           - For high-risk Stage III (T4 or N2), 6 months of either FOLFOX or CAPOX is recommended.
+        - Section: Management of Metastatic Disease (Stage IV)
+          - For patients with metastatic colon cancer, systemic chemotherapy is the primary treatment.
+          - First-line treatment options often include FOLFOX or FOLFIRI, potentially with a biologic agent (like bevacizumab, cetuximab, or panitumumab) depending on KRAS/NRAS/BRAF mutation status.
+          - The choice of regimen depends on the patient's overall health, goals of care (palliative vs. curative intent), and tumor molecular characteristics.
+          - Example recommendation: "Systemic chemotherapy with FOLFOX + bevacizumab is a standard first-line option for unresectable metastatic colon cancer in appropriate patients."
         - Section: Management of Neuroendocrine Tumors (NETs)
           - For localized, well-differentiated (G1/G2) NETs that have been completely resected, the standard of care is surveillance. Adjuvant therapy is not typically recommended.
         - Section: General Principles
