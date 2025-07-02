@@ -64,6 +64,7 @@ export const colonSurgicalProcedureOptions = [
   { value: 'Sigmoid Colectomy', label: 'Sigmoid Colectomy (Includes nodal harvest)' },
   { value: 'Subtotal/Total Colectomy', label: 'Subtotal/Total Colectomy (Includes nodal harvest)' },
   { value: 'Local Excision/Polypectomy', label: 'Local Excision/Polypectomy' },
+  { value: 'Not Applicable / Inoperable', label: 'Not Applicable / Inoperable' },
   { value: 'Other', label: 'Other Procedure' },
 ];
 export const colonLymphNodeAssessmentOptions = [
@@ -143,6 +144,7 @@ export const rectalSurgicalProcedureOptions = [
   { value: 'Transanal Endoscopic Microsurgery (TEMS)', label: 'Transanal Endoscopic Microsurgery (TEMS)' },
   { value: 'Transanal Local Excision (TAE)', label: 'Transanal Local Excision (TAE)' },
   { value: 'Pelvic Exenteration', label: 'Pelvic Exenteration' },
+  { value: 'Not Applicable / Inoperable', label: 'Not Applicable / Inoperable' },
   { value: 'Other', label: 'Other Procedure' },
 ];
 export const rectalLymphNodeAssessmentOptions = [...colonLymphNodeAssessmentOptions];
@@ -187,6 +189,7 @@ export const breastSurgicalProcedureOptions = [
   { value: 'Mastectomy with SLNB', label: 'Mastectomy with SLNB' },
   { value: 'Mastectomy with ALND', label: 'Mastectomy with ALND' },
   { value: 'Excisional Biopsy', label: 'Excisional Biopsy (Diagnostic)' },
+  { value: 'Not Applicable / Inoperable', label: 'Not Applicable / Inoperable' },
   { value: 'Other', label: 'Other Procedure' },
 ];
 export const breastLymphNodeAssessmentOptions = [
@@ -265,6 +268,7 @@ export const otherCancerSurgicalProcedureOptions = [
   { value: 'Resection of Primary Tumor', label: 'Resection of Primary Tumor (Includes nodal harvest if applicable)' },
   { value: 'Debulking Surgery', label: 'Debulking Surgery' },
   { value: 'Palliative Surgery', label: 'Palliative Surgery' },
+  { value: 'Not Applicable / Inoperable', label: 'Not Applicable / Inoperable' },
   { value: 'No Surgery Performed', label: 'No Surgery Performed' },
   { value: 'Other', label: 'Other Procedure' },
 ];
