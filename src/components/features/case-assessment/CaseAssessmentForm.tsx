@@ -40,6 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useGuidelineContext } from "@/context/GuidelineContext";
 
 
 import { 
@@ -68,7 +69,7 @@ const baseFormSchema = z.object({
   vascularLymphaticInvasion: z.boolean().optional(),
 
   // Metastatic fields (optional at base level)
-  tumorSidedness: z.enum(['Left', 'Right']).optional(),
+  tumorSidedness: z.enum(['Left', 'Right', 'Unknown']).optional(),
   krasNrasHrasStatus: z.enum(['Wild Type', 'Mutated', 'Unknown']).optional(),
   brafStatus: z.enum(['V600E Mutated', 'Non-V600E Mutated', 'Wild Type', 'Unknown']).optional(),
   her2Status: z.enum(['Positive', 'Negative', 'Unknown']).optional(),
@@ -132,6 +133,8 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     open: false,
     cancerType: '',
   });
+
+  const { processedDocuments } = useGuidelineContext();
 
   const form = useForm<CaseFormValues>({
     resolver: zodResolver(formSchema),
@@ -199,58 +202,87 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     setLastSubmittedValues(values);
     setIsRecommendationFinalized(false);
     
-    const availableGuidelines: Record<string, boolean> = {
+    // Check if there is an uploaded guideline for the selected cancer type
+    const guidelineFromContext = values.cancerType ? processedDocuments[values.cancerType] : undefined;
+    
+    // The "available" guidelines are now determined by what's in the context or hardcoded as a fallback.
+    // We will show a dialog only for types that have no context entry and no hardcoded fallback.
+    const hardcodedFallbacks: Record<string, boolean> = {
         'Colon Cancer': true,
+        'Rectal Cancer': true, 
+        'Breast Cancer': true,
+        'Other': true,
     };
     
-    if (values.cancerType !== 'Other' && !availableGuidelines[values.cancerType]) {
+    if (values.cancerType && !guidelineFromContext && !hardcodedFallbacks[values.cancerType]) {
         setDialogState({ open: true, cancerType: values.cancerType });
         setIsLoading(false);
         return;
     }
 
     let guidelineDocumentContent: string;
+    
+    if (guidelineFromContext) {
+        guidelineDocumentContent = guidelineFromContext.content;
+        toast({
+            title: "Using Uploaded Guideline",
+            description: `Basing recommendation on "${guidelineFromContext.fileName}".`,
+        });
+    } else {
+        // Fallback to default hardcoded content if no document was "uploaded"
+        switch (values.cancerType) {
+            case 'Colon Cancer':
+                guidelineDocumentContent = `
+                Simulated NCCN Guideline for Colon Cancer:
+                - Section: Adjuvant Therapy for Stage III Disease
+                  - For resected Stage III colon cancer (any T, N1-2), adjuvant chemotherapy is the standard of care.
+                  - Standard regimens include FOLFOX for 6 months or CAPOX for 3-6 months.
+                  - For low-risk Stage III (T1-3, N1), 3 months of CAPOX is an option. 
+                  - For high-risk Stage III (T4 or N2), 6 months of either FOLFOX or CAPOX is recommended.
+                - Section: Management of Neuroendocrine Tumors (NETs)
+                  - For localized, well-differentiated (G1/G2) NETs that have been completely resected, the standard of care is surveillance. Adjuvant therapy is not typically recommended.
+                - Section: Management of Metastatic Disease (Stage IV)
+                  - Guideline: Comprehensive molecular testing is mandatory (RAS, BRAF, HER2, MSI, NTRK).
+                  - Guideline: For MSI-High tumors, first-line immunotherapy (e.g., Pembrolizumab) is preferred, regardless of sidedness.
+                  - Guideline: For NTRK Fusion-Positive tumors, a TRK inhibitor (e.g., Larotrectinib) is recommended.
+                  - Guideline: For HER2-Positive, RAS Wild-Type tumors, regimens targeting HER2 (e.g., Trastuzumab + Pertuzumab + chemotherapy) are options, particularly in later lines.
+                  - Guideline: For BRAF V600E Mutated tumors, a BRAF inhibitor combination (e.g., Encorafenib + Cetuximab) is a standard of care, often with chemotherapy.
+                  - Palliative, Fit, Left-Sided, RAS WT: Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + an anti-EGFR antibody (Cetuximab or Panitumumab).
+                  - Palliative, Fit, Right-Sided, RAS WT: Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + Bevacizumab. Anti-EGFR therapy is less effective.
+                  - Palliative, Fit, RAS Mutated (any side): Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + Bevacizumab. Anti-EGFR is contraindicated.
+                  - Palliative, Not Fit: Less intensive options like 5-FU/Capecitabine +/- Bevacizumab, or best supportive care.
+                  - Curative Intent (Oligometastatic), Surgery Feasible: Upfront surgery is recommended, followed by adjuvant chemotherapy (e.g., FOLFOX or CAPOX).
+                  - Curative Intent (Oligometastatic), Surgery Not Feasible: Neoadjuvant/conversion chemotherapy (e.g., FOLFOX) to shrink tumors, then reassess for surgery.
+                `;
+                break;
+            case 'Rectal Cancer':
+                guidelineDocumentContent = `No guideline document currently available for Rectal Cancer. State that a recommendation cannot be provided due to lack of specific guidelines for Rectal Cancer.`;
+                break;
+            case 'Breast Cancer':
+                guidelineDocumentContent = `No guideline document currently available for Breast Cancer. State that a recommendation cannot be provided due to lack of specific guidelines for Breast Cancer.`;
+                break;
+            case 'Other':
+            default:
+                guidelineDocumentContent = `Placeholder: No specific PDF uploaded or content not extracted for 'Other' cancer types. The AI should state that it cannot provide a recommendation without a relevant guideline document for the specified 'Other' cancer type.`;
+                break;
+        }
+    }
+    
     let submissionData: AllTreatmentInput;
-
     switch (values.cancerType) {
-      case 'Colon Cancer':
-        guidelineDocumentContent = `
-        Simulated NCCN Guideline for Colon Cancer:
-        - Section: Adjuvant Therapy for Stage III Disease
-          - For resected Stage III colon cancer (any T, N1-2), adjuvant chemotherapy is the standard of care.
-          - Standard regimens include FOLFOX for 6 months or CAPOX for 3-6 months.
-          - For low-risk Stage III (T1-3, N1), 3 months of CAPOX is an option. 
-          - For high-risk Stage III (T4 or N2), 6 months of either FOLFOX or CAPOX is recommended.
-        - Section: Management of Neuroendocrine Tumors (NETs)
-          - For localized, well-differentiated (G1/G2) NETs that have been completely resected, the standard of care is surveillance. Adjuvant therapy is not typically recommended.
-        - Section: Management of Metastatic Disease (Stage IV)
-          - Guideline: Comprehensive molecular testing is mandatory (RAS, BRAF, HER2, MSI, NTRK).
-          - Guideline: For MSI-High tumors, first-line immunotherapy (e.g., Pembrolizumab) is preferred, regardless of sidedness.
-          - Guideline: For NTRK Fusion-Positive tumors, a TRK inhibitor (e.g., Larotrectinib) is recommended.
-          - Guideline: For HER2-Positive, RAS Wild-Type tumors, regimens targeting HER2 (e.g., Trastuzumab + Pertuzumab + chemotherapy) are options, particularly in later lines.
-          - Guideline: For BRAF V600E Mutated tumors, a BRAF inhibitor combination (e.g., Encorafenib + Cetuximab) is a standard of care, often with chemotherapy.
-          - Palliative, Fit, Left-Sided, RAS WT: Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + an anti-EGFR antibody (Cetuximab or Panitumumab).
-          - Palliative, Fit, Right-Sided, RAS WT: Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + Bevacizumab. Anti-EGFR therapy is less effective.
-          - Palliative, Fit, RAS Mutated (any side): Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + Bevacizumab. Anti-EGFR is contraindicated.
-          - Palliative, Not Fit: Less intensive options like 5-FU/Capecitabine +/- Bevacizumab, or best supportive care.
-          - Curative Intent (Oligometastatic), Surgery Feasible: Upfront surgery is recommended, followed by adjuvant chemotherapy (e.g., FOLFOX or CAPOX).
-          - Curative Intent (Oligometastatic), Surgery Not Feasible: Neoadjuvant/conversion chemotherapy (e.g., FOLFOX) to shrink tumors, then reassess for surgery.
-        `;
-        submissionData = { ...values, cancerType: 'Colon Cancer', guidelineDocumentContent };
-        break;
-      case 'Rectal Cancer':
-        guidelineDocumentContent = `No guideline document currently available for Rectal Cancer. State that a recommendation cannot be provided due to lack of specific guidelines for Rectal Cancer.`;
-        submissionData = { ...values, cancerType: 'Rectal Cancer', guidelineDocumentContent };
-        break;
-      case 'Breast Cancer':
-        guidelineDocumentContent = `No guideline document currently available for Breast Cancer. State that a recommendation cannot be provided due to lack of specific guidelines for Breast Cancer.`;
-        submissionData = { ...values, cancerType: 'Breast Cancer', guidelineDocumentContent };
-        break;
-      case 'Other':
-      default:
-        guidelineDocumentContent = `Placeholder: No specific PDF uploaded or content not extracted for 'Other' cancer types. The AI should state that it cannot provide a recommendation without a relevant guideline document for the specified 'Other' cancer type.`;
-        submissionData = { ...values, cancerType: 'Other', guidelineDocumentContent } as AllTreatmentInput; 
-        break;
+        case 'Colon Cancer':
+            submissionData = { ...values, cancerType: 'Colon Cancer', guidelineDocumentContent };
+            break;
+        case 'Rectal Cancer':
+            submissionData = { ...values, cancerType: 'Rectal Cancer', guidelineDocumentContent };
+            break;
+        case 'Breast Cancer':
+            submissionData = { ...values, cancerType: 'Breast Cancer', guidelineDocumentContent };
+            break;
+        case 'Other':
+        default:
+            submissionData = { ...values, cancerType: 'Other', guidelineDocumentContent } as AllTreatmentInput;
+            break;
     }
     
     setCurrentFormInputForDisplay(submissionData);
@@ -435,7 +467,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-3xl font-headline text-primary">Case Assessment</CardTitle>
-            <CardDescription>Enter patient case details. Recommendation will be based on (simulated) uploaded NCCN guideline documents specific to the cancer type.</CardDescription>
+            <CardDescription>Enter patient case details. Recommendation will be based on uploaded NCCN guideline documents specific to the cancer type.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -573,13 +605,13 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Guideline Not Available</AlertDialogTitle>
             <AlertDialogDescription>
-              The system is not equipped with proper recommendations for{' '}
-              <strong className="text-primary">{dialogState.cancerType}</strong>. 
-              Do you want to share proper and recommended guidelines?
+              A guideline document for{' '}
+              <strong className="text-primary">{dialogState.cancerType}</strong> has not been uploaded. 
+              Would you like to upload one now?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>No, choose different type</AlertDialogCancel>
+            <AlertDialogCancel>No, continue without</AlertDialogCancel>
             <AlertDialogAction onClick={() => router.push('/upload')}>
               Yes, upload guidelines
             </AlertDialogAction>

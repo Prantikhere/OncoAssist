@@ -1,9 +1,15 @@
+
 import { AppShell } from '@/components/layout/AppShell';
+import { GuidelineProvider } from '@/context/GuidelineContext';
 
 export default function MainLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <AppShell>{children}</AppShell>;
+  return (
+    <GuidelineProvider>
+      <AppShell>{children}</AppShell>
+    </GuidelineProvider>
+  );
 }
