@@ -96,6 +96,7 @@ export const colonNStageOptions = [
 export const tumorSidednessOptions = [
   { value: 'Left', label: 'Left-Sided (Distal to splenic flexure)' },
   { value: 'Right', label: 'Right-Sided (Proximal to splenic flexure)' },
+  { value: 'Unknown', label: 'Unknown / Not Determined' },
 ];
 
 export const molecularTestStatusOptions = [
