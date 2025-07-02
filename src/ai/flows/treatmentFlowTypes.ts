@@ -34,6 +34,16 @@ export type CancerTreatmentOutput = z.infer<typeof CancerTreatmentOutputSchema>;
 
 export const ColonCancerTreatmentInputSchema = BaseTreatmentInputSchema.extend({
   cancerType: z.literal('Colon Cancer').describe('Type of cancer, fixed to Colon Cancer.'),
+  // Metastatic specific fields
+  tumorSidedness: z.enum(['Left', 'Right']).optional().describe('Tumor sidedness for metastatic cases.'),
+  krasNrasHrasStatus: z.enum(['Wild Type', 'Mutated', 'Unknown']).optional().describe('RAS (KRAS/NRAS/HRAS) mutation status.'),
+  brafStatus: z.enum(['V600E Mutated', 'Non-V600E Mutated', 'Wild Type', 'Unknown']).optional().describe('BRAF mutation status.'),
+  her2Status: z.enum(['Positive', 'Negative', 'Unknown']).optional().describe('HER2 amplification status.'),
+  msiStatus: z.enum(['MSI-High', 'MSI-Low or Stable', 'Unknown']).optional().describe('Microsatellite Instability status.'),
+  ntrkFusionStatus: z.enum(['Positive', 'Negative', 'Unknown']).optional().describe('NTRK fusion status.'),
+  treatmentIntent: z.enum(['Curative', 'Palliative']).optional().describe('Treatment intent for metastatic disease.'),
+  isSurgeryFeasible: z.boolean().optional().describe('Whether surgery is feasible upfront for curative intent.'),
+  isFitForIntensiveTherapy: z.boolean().optional().describe('Whether patient is fit for intensive therapy for palliative intent.'),
 });
 export type ColonCancerTreatmentInput = z.infer<typeof ColonCancerTreatmentInputSchema>;
 
@@ -54,7 +64,7 @@ export type OtherCancerTreatmentInput = z.infer<typeof OtherCancerTreatmentInput
 
 // Union type for form values after adding guidelineDocumentContent but before specific flow casting
 export type AllTreatmentInput = 
-  Omit<ColonCancerTreatmentInput, 'guidelineDocumentContent'> & { cancerType: 'Colon Cancer'; guidelineDocumentContent: string } |
-  Omit<RectalCancerTreatmentInput, 'guidelineDocumentContent'> & { cancerType: 'Rectal Cancer'; guidelineDocumentContent: string } |
-  Omit<BreastCancerTreatmentInput, 'guidelineDocumentContent'> & { cancerType: 'Breast Cancer'; guidelineDocumentContent: string } |
-  Omit<OtherCancerTreatmentInput, 'guidelineDocumentContent'> & { cancerType: 'Other'; guidelineDocumentContent: string };
+  ColonCancerTreatmentInput |
+  RectalCancerTreatmentInput |
+  BreastCancerTreatmentInput |
+  OtherCancerTreatmentInput;

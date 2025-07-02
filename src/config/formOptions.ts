@@ -91,6 +91,49 @@ export const colonNStageOptions = [
   { value: 'NX', label: 'NX (Regional lymph nodes cannot be assessed)'},
 ];
 
+// --- Metastatic Colon Cancer Specific Options ---
+export const tumorSidednessOptions = [
+  { value: 'Left', label: 'Left-Sided (Distal to splenic flexure)' },
+  { value: 'Right', label: 'Right-Sided (Proximal to splenic flexure)' },
+];
+
+export const molecularTestStatusOptions = [
+  { value: 'Wild Type', label: 'Wild Type (No mutation detected)' },
+  { value: 'Mutated', label: 'Mutated' },
+  { value: 'Unknown', label: 'Unknown / Not Tested' },
+];
+
+export const brafStatusOptions = [
+  { value: 'V600E Mutated', label: 'BRAF V600E Mutated' },
+  { value: 'Non-V600E Mutated', label: 'BRAF Non-V600E Mutated' },
+  { value: 'Wild Type', label: 'Wild Type (No mutation detected)' },
+  { value: 'Unknown', label: 'Unknown / Not Tested' },
+];
+
+export const her2StatusOptions = [
+  { value: 'Positive', label: 'Positive (Amplified/Overexpressed)' },
+  { value: 'Negative', label: 'Negative' },
+  { value: 'Unknown', label: 'Unknown / Not Tested' },
+];
+
+export const msiStatusOptions = [
+  { value: 'MSI-High', label: 'MSI-High (Mismatch Repair Deficient)' },
+  { value: 'MSI-Low or Stable', label: 'MSI-Low / MSS (Mismatch Repair Proficient)' },
+  { value: 'Unknown', label: 'Unknown / Not Tested' },
+];
+
+export const ntrkFusionStatusOptions = [
+  { value: 'Positive', label: 'NTRK Fusion-Positive' },
+  { value: 'Negative', label: 'NTRK Fusion-Negative' },
+  { value: 'Unknown', label: 'Unknown / Not Tested' },
+];
+
+export const treatmentIntentOptions = [
+  { value: 'Curative', label: 'Curative Intent (Oligometastatic Disease)' },
+  { value: 'Palliative', label: 'Palliative Intent (Widespread Disease)' },
+];
+
+
 // --- Rectal Cancer Specific Options (largely similar to Colon, but can be distinct) ---
 export const rectalTumorTypeOptions = [...colonTumorTypeOptions]; // Often similar
 export const rectalGradeOptions = [...colonGradeOptions];

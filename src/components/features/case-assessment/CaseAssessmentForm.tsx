@@ -51,7 +51,7 @@ import {
   diagnoseOtherCancer
 } from "@/ai/flows";
 
-const formSchema = z.object({
+const baseFormSchema = z.object({
   cancerType: z.enum(['Colon Cancer', 'Rectal Cancer', 'Breast Cancer', 'Other'], { required_error: "Cancer type is required." }),
   diagnosticConfirmation: z.enum(['Biopsy-Proven', 'Cytology-Proven', 'Imaging Suggestive', 'Other'], { required_error: "Diagnostic confirmation is required." }),
   stagingEvaluation: z.enum(['Completed', 'In Progress', 'Not Yet Started', 'Other'], { required_error: "Staging evaluation is required." }),
@@ -66,7 +66,52 @@ const formSchema = z.object({
   
   postSurgeryAnalysis: z.enum(['Final pathology/biopsy report generated', 'Awaiting final pathology', 'Other'], { required_error: "Post-surgery analysis is required." }),
   vascularLymphaticInvasion: z.boolean().optional(),
+
+  // Metastatic fields (optional at base level)
+  tumorSidedness: z.enum(['Left', 'Right']).optional(),
+  krasNrasHrasStatus: z.enum(['Wild Type', 'Mutated', 'Unknown']).optional(),
+  brafStatus: z.enum(['V600E Mutated', 'Non-V600E Mutated', 'Wild Type', 'Unknown']).optional(),
+  her2Status: z.enum(['Positive', 'Negative', 'Unknown']).optional(),
+  msiStatus: z.enum(['MSI-High', 'MSI-Low or Stable', 'Unknown']).optional(),
+  ntrkFusionStatus: z.enum(['Positive', 'Negative', 'Unknown']).optional(),
+  treatmentIntent: z.enum(['Curative', 'Palliative']).optional(),
+  isSurgeryFeasible: z.boolean().optional(),
+  isFitForIntensiveTherapy: z.boolean().optional(),
 });
+
+// Refine schema for conditional validation
+const formSchema = baseFormSchema.superRefine((data, ctx) => {
+  if (data.cancerType === 'Colon Cancer' && data.diseaseExtent === 'Metastatic') {
+    if (!data.tumorSidedness) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required", path: ["tumorSidedness"] });
+    }
+    if (!data.krasNrasHrasStatus) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required", path: ["krasNrasHrasStatus"] });
+    }
+    if (!data.brafStatus) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required", path: ["brafStatus"] });
+    }
+    if (!data.her2Status) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required", path: ["her2Status"] });
+    }
+     if (!data.msiStatus) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required", path: ["msiStatus"] });
+    }
+    if (!data.ntrkFusionStatus) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required", path: ["ntrkFusionStatus"] });
+    }
+    if (!data.treatmentIntent) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required", path: ["treatmentIntent"] });
+    }
+    if (data.treatmentIntent === 'Curative' && data.isSurgeryFeasible === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required for curative intent", path: ["isSurgeryFeasible"] });
+    }
+    if (data.treatmentIntent === 'Palliative' && data.isFitForIntensiveTherapy === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required for palliative intent", path: ["isFitForIntensiveTherapy"] });
+    }
+  }
+});
+
 
 type CaseFormValues = z.infer<typeof formSchema>;
 
@@ -107,8 +152,10 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
   });
 
   const watchedCancerType = form.watch("cancerType");
+  const watchedDiseaseExtent = form.watch("diseaseExtent");
   const watchedTStage = form.watch("tStage");
   const watchedNStage = form.watch("nStage");
+  const watchedTreatmentIntent = form.watch("treatmentIntent");
 
   useEffect(() => {
     if (watchedCancerType) {
@@ -128,6 +175,8 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     (watchedCancerType === 'Colon Cancer' || watchedCancerType === 'Rectal Cancer') &&
     watchedTStage === 'T3' && 
     watchedNStage === 'N0';
+
+  const showMetastaticFields = watchedCancerType === 'Colon Cancer' && watchedDiseaseExtent === 'Metastatic';
 
   const handleAccept = () => {
     setIsRecommendationFinalized(true);
@@ -161,9 +210,8 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     }
 
     let guidelineDocumentContent: string;
-    const submissionValues = { ...values };
-
     let submissionData: AllTreatmentInput;
+
     switch (values.cancerType) {
       case 'Colon Cancer':
         guidelineDocumentContent = `
@@ -173,30 +221,35 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
           - Standard regimens include FOLFOX for 6 months or CAPOX for 3-6 months.
           - For low-risk Stage III (T1-3, N1), 3 months of CAPOX is an option. 
           - For high-risk Stage III (T4 or N2), 6 months of either FOLFOX or CAPOX is recommended.
-        - Section: Management of Metastatic Disease (Stage IV)
-          - For patients with metastatic colon cancer, systemic chemotherapy is the primary treatment.
-          - First-line treatment options often include FOLFOX or FOLFIRI, potentially with a biologic agent (like bevacizumab, cetuximab, or panitumumab) depending on KRAS/NRAS/BRAF mutation status.
-          - The choice of regimen depends on the patient's overall health, goals of care (palliative vs. curative intent), and tumor molecular characteristics.
-          - Example recommendation: "Systemic chemotherapy with FOLFOX + bevacizumab is a standard first-line option for unresectable metastatic colon cancer in appropriate patients."
         - Section: Management of Neuroendocrine Tumors (NETs)
           - For localized, well-differentiated (G1/G2) NETs that have been completely resected, the standard of care is surveillance. Adjuvant therapy is not typically recommended.
-        - Section: General Principles
-          - Recommendations must be based on the patient's performance status and comorbidities.
+        - Section: Management of Metastatic Disease (Stage IV)
+          - Guideline: Comprehensive molecular testing is mandatory (RAS, BRAF, HER2, MSI, NTRK).
+          - Guideline: For MSI-High tumors, first-line immunotherapy (e.g., Pembrolizumab) is preferred, regardless of sidedness.
+          - Guideline: For NTRK Fusion-Positive tumors, a TRK inhibitor (e.g., Larotrectinib) is recommended.
+          - Guideline: For HER2-Positive, RAS Wild-Type tumors, regimens targeting HER2 (e.g., Trastuzumab + Pertuzumab + chemotherapy) are options, particularly in later lines.
+          - Guideline: For BRAF V600E Mutated tumors, a BRAF inhibitor combination (e.g., Encorafenib + Cetuximab) is a standard of care, often with chemotherapy.
+          - Palliative, Fit, Left-Sided, RAS WT: Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + an anti-EGFR antibody (Cetuximab or Panitumumab).
+          - Palliative, Fit, Right-Sided, RAS WT: Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + Bevacizumab. Anti-EGFR therapy is less effective.
+          - Palliative, Fit, RAS Mutated (any side): Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + Bevacizumab. Anti-EGFR is contraindicated.
+          - Palliative, Not Fit: Less intensive options like 5-FU/Capecitabine +/- Bevacizumab, or best supportive care.
+          - Curative Intent (Oligometastatic), Surgery Feasible: Upfront surgery is recommended, followed by adjuvant chemotherapy (e.g., FOLFOX or CAPOX).
+          - Curative Intent (Oligometastatic), Surgery Not Feasible: Neoadjuvant/conversion chemotherapy (e.g., FOLFOX) to shrink tumors, then reassess for surgery.
         `;
-        submissionData = { ...submissionValues, cancerType: 'Colon Cancer', guidelineDocumentContent };
+        submissionData = { ...values, cancerType: 'Colon Cancer', guidelineDocumentContent };
         break;
       case 'Rectal Cancer':
         guidelineDocumentContent = `No guideline document currently available for Rectal Cancer. State that a recommendation cannot be provided due to lack of specific guidelines for Rectal Cancer.`;
-        submissionData = { ...submissionValues, cancerType: 'Rectal Cancer', guidelineDocumentContent };
+        submissionData = { ...values, cancerType: 'Rectal Cancer', guidelineDocumentContent };
         break;
       case 'Breast Cancer':
         guidelineDocumentContent = `No guideline document currently available for Breast Cancer. State that a recommendation cannot be provided due to lack of specific guidelines for Breast Cancer.`;
-        submissionData = { ...submissionValues, cancerType: 'Breast Cancer', guidelineDocumentContent };
+        submissionData = { ...values, cancerType: 'Breast Cancer', guidelineDocumentContent };
         break;
       case 'Other':
       default:
         guidelineDocumentContent = `Placeholder: No specific PDF uploaded or content not extracted for 'Other' cancer types. The AI should state that it cannot provide a recommendation without a relevant guideline document for the specified 'Other' cancer type.`;
-        submissionData = { ...submissionValues, cancerType: 'Other', guidelineDocumentContent } as AllTreatmentInput; 
+        submissionData = { ...values, cancerType: 'Other', guidelineDocumentContent } as AllTreatmentInput; 
         break;
     }
     
@@ -206,16 +259,16 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
       let result: CancerTreatmentOutput;
       switch (submissionData.cancerType) {
         case 'Colon Cancer':
-          result = await diagnoseColonCancer(submissionData as Extract<AllTreatmentInput, { cancerType: 'Colon Cancer' }>);
+          result = await diagnoseColonCancer(submissionData);
           break;
         case 'Rectal Cancer':
-           result = await diagnoseRectalCancer(submissionData as Extract<AllTreatmentInput, { cancerType: 'Rectal Cancer' }>);
+           result = await diagnoseRectalCancer(submissionData);
           break;
         case 'Breast Cancer':
-          result = await diagnoseBreastCancer(submissionData as Extract<AllTreatmentInput, { cancerType: 'Breast Cancer' }>);
+          result = await diagnoseBreastCancer(submissionData);
           break;
         case 'Other':
-          result = await diagnoseOtherCancer(submissionData as Extract<AllTreatmentInput, { cancerType: 'Other' }>);
+          result = await diagnoseOtherCancer(submissionData);
           break;
         default:
           const exhaustiveCheck: never = submissionData; 
@@ -299,10 +352,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
       },
     };
     
-    // This type assertion is safe because watchedCancerType is one of the keys of optionsMap
     const cancerOptions = optionsMap[watchedCancerType as keyof typeof optionsMap];
-    
-    // This assertion is safe as fieldName is one of the keys in the nested objects
     return cancerOptions[fieldName as keyof typeof cancerOptions] || [];
   };
 
@@ -420,7 +470,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm col-span-1 md:col-span-2 bg-background">
                           <div className="space-y-0.5">
-                            <FormLabel>Vascular/Lymphatic Invasion (T3N0 Colon/Rectal)</FormLabel>
+                            <FormLabel>Vascular/Lymphatic Invasion (T3N0)</FormLabel>
                             <FormMessage />
                           </div>
                           <FormControl>
@@ -435,6 +485,59 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
                     />
                   )}
                 </div>
+
+                {showMetastaticFields && (
+                  <>
+                    <Separator className="my-8" />
+                    <h3 className="text-xl font-semibold font-headline text-foreground/90">Metastatic Disease Details (Colon Cancer)</h3>
+                    <div className="space-y-6 p-4 border rounded-md bg-muted/20">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {renderSelectField("tumorSidedness", "Tumor Sidedness", formOptions.tumorSidednessOptions, "Select tumor sidedness")}
+                        {renderSelectField("treatmentIntent", "Treatment Intent", formOptions.treatmentIntentOptions, "Select treatment intent")}
+                      </div>
+
+                      <h4 className="text-lg font-medium text-foreground/80">Comprehensive Molecular Testing</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {renderSelectField("krasNrasHrasStatus", "RAS (KRAS/NRAS/HRAS) Status", formOptions.molecularTestStatusOptions, "Select RAS status")}
+                        {renderSelectField("brafStatus", "BRAF Status", formOptions.brafStatusOptions, "Select BRAF status")}
+                        {renderSelectField("her2Status", "HER2 Status", formOptions.her2StatusOptions, "Select HER2 status")}
+                        {renderSelectField("msiStatus", "MSI Status", formOptions.msiStatusOptions, "Select MSI status")}
+                        {renderSelectField("ntrkFusionStatus", "NTRK Fusion Status", formOptions.ntrkFusionStatusOptions, "Select NTRK status")}
+                      </div>
+                      
+                      {watchedTreatmentIntent === 'Curative' && (
+                         <FormField
+                          control={form.control}
+                          name="isSurgeryFeasible"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background">
+                              <div className="space-y-0.5">
+                                <FormLabel>Is Resection of Metastases Feasible?</FormLabel>
+                                <FormMessage />
+                              </div>
+                              <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                      {watchedTreatmentIntent === 'Palliative' && (
+                         <FormField
+                          control={form.control}
+                          name="isFitForIntensiveTherapy"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background">
+                              <div className="space-y-0.5">
+                                <FormLabel>Is Patient Fit for Intensive Therapy?</FormLabel>
+                                <FormMessage />
+                              </div>
+                              <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                    </div>
+                  </>
+                )}
                 
                 <Button type="submit" disabled={isLoading || !watchedCancerType} className="w-full sm:w-auto">
                   {isLoading ? (
