@@ -52,16 +52,12 @@ Follow this algorithm for the metastatic case provided.
     {{#if isSurgeryFeasible}}
     *   Curative Intent - Surgery Feasible: Yes
     {{else}}
-      {{#if (eq treatmentIntent 'Curative')}}
-      *   Curative Intent - Surgery Feasible: No
-      {{/if}}
+    *   Curative Intent - Surgery Feasible: No
     {{/if}}
     {{#if isFitForIntensiveTherapy}}
     *   Palliative Intent - Fit for Intensive Therapy: Yes
     {{else}}
-      {{#if (eq treatmentIntent 'Palliative')}}
-      *   Palliative Intent - Fit for Intensive Therapy: No
-      {{/if}}
+    *   Palliative Intent - Fit for Intensive Therapy: No
     {{/if}}
 
 **3. Recommendation Generation:**
@@ -116,7 +112,7 @@ const colonCancerTreatmentFlow = ai.defineFlow(
     if (!output) {
       return {
         recommendation: "Failed to generate a recommendation. The AI model may have not returned the expected output.",
-        references: "N/A",
+        references: "N/a",
         noRecommendationReason: "Error in AI model processing."
       };
     }
