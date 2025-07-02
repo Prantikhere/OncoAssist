@@ -35,7 +35,7 @@ export type CancerTreatmentOutput = z.infer<typeof CancerTreatmentOutputSchema>;
 export const ColonCancerTreatmentInputSchema = BaseTreatmentInputSchema.extend({
   cancerType: z.literal('Colon Cancer').describe('Type of cancer, fixed to Colon Cancer.'),
   // Metastatic specific fields
-  tumorSidedness: z.enum(['Left', 'Right']).optional().describe('Tumor sidedness for metastatic cases.'),
+  tumorSidedness: z.enum(['Left', 'Right', 'Unknown']).optional().describe('Tumor sidedness for metastatic cases.'),
   krasNrasHrasStatus: z.enum(['Wild Type', 'Mutated', 'Unknown']).optional().describe('RAS (KRAS/NRAS/HRAS) mutation status.'),
   brafStatus: z.enum(['V600E Mutated', 'Non-V600E Mutated', 'Wild Type', 'Unknown']).optional().describe('BRAF mutation status.'),
   her2Status: z.enum(['Positive', 'Negative', 'Unknown']).optional().describe('HER2 amplification status.'),
