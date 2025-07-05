@@ -116,11 +116,7 @@ const formSchema = baseFormSchema.superRefine((data, ctx) => {
 
 type CaseFormValues = z.infer<typeof formSchema>;
 
-interface CaseAssessmentFormProps {
-  addAuditEntry: (entry: AuditEntry) => void;
-}
-
-export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
+export function CaseAssessmentForm() {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -134,7 +130,7 @@ export function CaseAssessmentForm({ addAuditEntry }: CaseAssessmentFormProps) {
     cancerType: '',
   });
 
-  const { processedDocuments } = useGuidelineContext();
+  const { processedDocuments, addAuditEntry } = useGuidelineContext();
 
   const form = useForm<CaseFormValues>({
     resolver: zodResolver(formSchema),

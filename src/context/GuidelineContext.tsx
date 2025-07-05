@@ -2,6 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import type { AuditEntry } from '@/types';
 
 // Define the shape of the processed document information
 interface ProcessedDocument {
@@ -14,6 +15,8 @@ interface ProcessedDocument {
 interface GuidelineContextType {
   processedDocuments: Record<string, ProcessedDocument>;
   addProcessedDocument: (cancerType: string, docInfo: ProcessedDocument) => void;
+  auditEntries: AuditEntry[];
+  addAuditEntry: (entry: AuditEntry) => void;
 }
 
 // Create the context with a default value
@@ -22,6 +25,7 @@ const GuidelineContext = createContext<GuidelineContextType | undefined>(undefin
 // Create the provider component
 export const GuidelineProvider = ({ children }: { children: ReactNode }) => {
   const [processedDocuments, setProcessedDocuments] = useState<Record<string, ProcessedDocument>>({});
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
 
   const addProcessedDocument = (cancerType: string, docInfo: ProcessedDocument) => {
     setProcessedDocuments(prev => ({
@@ -30,7 +34,16 @@ export const GuidelineProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
-  const value = { processedDocuments, addProcessedDocument };
+  const addAuditEntry = (entry: AuditEntry) => {
+    setAuditEntries(prevEntries => [entry, ...prevEntries]);
+  };
+
+  const value = { 
+    processedDocuments, 
+    addProcessedDocument,
+    auditEntries,
+    addAuditEntry
+  };
 
   return (
     <GuidelineContext.Provider value={value}>
