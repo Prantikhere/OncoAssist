@@ -29,6 +29,7 @@ const breastCancerTreatmentPrompt = ai.definePrompt({
 2.  If the guideline content explicitly states it's unavailable, is a generic placeholder, or does not contain specific information for Breast Cancer, you MUST state this clearly in the 'recommendation' field and set 'references' to "N/A". Your 'noRecommendationReason' field should explain that the specific guidelines for Breast Cancer were not provided.
 3.  If the guideline content appears relevant, generate a concise, preliminary recommendation based SOLELY on the provided content and the patient's case details.
 4.  EXTRACT specific verbatim quotes or detailed section/page references from the guideline content that directly support EACH key part of your final recommendation. These references are crucial.
+5.  When analyzing the patient's case, interpret the 'T Stage' to determine the overall cancer stage for finding information within the guidelines. Use this mapping: 'T1' and its sub-variants (T1a, T1b, T1c, T1mi) map to Stage I Cancer; 'T2' maps to Stage II Cancer; 'T3' maps to Stage III Cancer; and 'T4' and its sub-variants (T4a, T4b, T4c, T4d) map to Stage IV Cancer.
 
 **INPUTS:**
 
