@@ -331,7 +331,7 @@ export function CaseAssessmentForm() {
         recommendation: result.recommendation,
         references: result.references,
         noRecommendationReason: result.noRecommendationReason,
-        usedGuidelineFiles,
+        usedGuidelineFiles: usedFileNames,
       });
 
     } catch (error) {
