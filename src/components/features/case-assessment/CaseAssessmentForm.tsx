@@ -220,7 +220,7 @@ export function CaseAssessmentForm() {
     let usedFileNames: string[] = [];
     
     if (useUploadedGuidelines) {
-        guidelineDocumentContent = guidelinesForType.map(doc => doc.content).join('\n\n---\n\n');
+        guidelineDocumentContent = guidelinesForType.map(doc => `--- START OF DOCUMENT: ${doc.fileName} ---\n\n${doc.content}\n\n--- END OF DOCUMENT: ${doc.fileName} ---`).join('\n\n');
         usedFileNames = guidelinesForType.map(doc => doc.fileName);
         toast({
             title: `Using ${usedFileNames.length} Uploaded Guideline(s)`,

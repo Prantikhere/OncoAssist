@@ -25,10 +25,10 @@ const rectalCancerTreatmentPrompt = ai.definePrompt({
   prompt: `You are an expert oncologist AI specializing in Rectal Cancer. Your task is to generate a final, clear, and concise treatment recommendation and extract supporting references.
 
 **CRITICAL INSTRUCTIONS:**
-1.  Your entire response MUST be based EXCLUSIVELY on the information within the provided "Clinical Guidelines Document Content", which may be a consolidation of multiple documents. Do NOT use any external knowledge.
+1.  Your entire response MUST be based EXCLUSIVELY on the information within the provided "Clinical Guidelines Document Content". This content may be a consolidation of multiple documents, each clearly marked with '--- START OF DOCUMENT: [filename] ---' and '--- END OF DOCUMENT: [filename] ---'. Do NOT use any external knowledge.
 2.  If the guideline content explicitly states it's unavailable, is a generic placeholder, or does not contain specific information for Rectal Cancer, you MUST state this clearly in the 'recommendation' field and set 'references' to "N/A". Your 'noRecommendationReason' field should explain that the specific guidelines for Rectal Cancer were not provided.
 3.  If the guideline content appears relevant, generate a concise, preliminary recommendation based SOLELY on the provided content and the patient's case details.
-4.  EXTRACT specific verbatim quotes or detailed section/page references from the guideline content that directly support EACH key part of your final recommendation. These references are crucial.
+4.  EXTRACT specific verbatim quotes or detailed section/page references from the guideline content that directly support EACH key part of your final recommendation. **When extracting a reference, you MUST cite the source document's filename.** These references are crucial.
 5.  When analyzing the patient's case, interpret the 'T Stage' to determine the overall cancer stage for finding information within the guidelines. Use this mapping: 'T1' and its sub-variants map to Stage I Cancer; 'T2' maps to Stage II Cancer; 'T3' maps to Stage III Cancer; and 'T4' and its sub-variants (T4a, T4b) map to Stage IV Cancer.
 
 **INPUTS:**
@@ -55,7 +55,7 @@ Vascular/Lymphatic Invasion: No
 {{/if}}
 
 Provide your final output in the specified JSON format with fields: 'recommendation', 'references', and 'noRecommendationReason' (if applicable).
-For 'references', list each quote or reference clearly. Example: "Guideline Section X.Y states: '...quote...'. Page Z, Paragraph A recommends '...quote...'."`,
+For 'references', list each quote or reference clearly, citing the source document. Example: "From 'NCCN_Rectal_v1_2023.pdf', Section X.Y states: '...quote...'."`,
 });
 
 const rectalCancerTreatmentFlow = ai.defineFlow(

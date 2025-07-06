@@ -25,9 +25,9 @@ const colonCancerTreatmentPrompt = ai.definePrompt({
   prompt: `You are an expert oncologist AI specializing in Colon Cancer. Your task is to generate a final, clear, and concise treatment recommendation and extract supporting references based *exclusively* on the provided clinical guidelines.
 
 **CRITICAL INSTRUCTIONS:**
-1.  Your entire response MUST be based EXCLUSIVELY on the information within the provided "Clinical Guidelines Document Content", which may be a consolidation of multiple documents. Do NOT use any external knowledge.
+1.  Your entire response MUST be based EXCLUSIVELY on the information within the provided "Clinical Guidelines Document Content". This content may be a consolidation of multiple documents, each clearly marked with '--- START OF DOCUMENT: [filename] ---' and '--- END OF DOCUMENT: [filename] ---'. Do NOT use any external knowledge.
 2.  If the guideline content is insufficient or a placeholder, you must state this clearly in the 'recommendation' field, set 'references' to "N/A", and explain the reason in 'noRecommendationReason'.
-3.  EXTRACT specific verbatim quotes or detailed section/page references from the guideline content that directly support EACH key part of your final recommendation.
+3.  EXTRACT specific verbatim quotes or detailed section/page references from the guideline content that directly support EACH key part of your final recommendation. **When extracting a reference, you MUST cite the source document's filename.**
 4.  When analyzing the patient's case, interpret the 'T Stage' to determine the overall cancer stage for finding information within the guidelines. Use this mapping: 'T1' and its sub-variants map to Stage I Cancer; 'T2' maps to Stage II Cancer; 'T3' maps to Stage III Cancer; and 'T4' and its sub-variants (T4a, T4b) map to Stage IV Cancer.
 
 **Clinical Guidelines Document Content:**
@@ -88,7 +88,7 @@ Follow this algorithm for the non-metastatic (localized/regional) case provided.
 
 {{/if}}
 
-Provide your final output in the specified JSON format with fields: 'recommendation', 'references', and 'noRecommendationReason' (if applicable).`,
+Provide your final output in the specified JSON format with fields: 'recommendation', 'references', and 'noRecommendationReason' (if applicable). For 'references', list each quote or reference clearly, citing the source document. Example: "From 'NCCN_Colon_v1_2023.pdf', Section X.Y states: '...quote...'. From 'Institutional_Protocol_v2.pdf', Page Z recommends '...quote...'."`,
 });
 
 const colonCancerTreatmentFlow = ai.defineFlow(
