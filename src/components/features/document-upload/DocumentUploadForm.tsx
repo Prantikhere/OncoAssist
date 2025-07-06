@@ -13,6 +13,15 @@ import { UploadCloud, Loader2, CheckCircle, AlertCircle, Trash2 } from "lucide-r
 import { useGuidelineContext } from "@/context/GuidelineContext";
 import type { ProcessedDocument } from "@/types";
 import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 export function DocumentUploadForm() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -104,6 +113,11 @@ export function DocumentUploadForm() {
     });
   }
 
+  // Flatten documents for table rendering and sort by most recent
+  const allDocuments = Object.entries(processedDocuments)
+    .flatMap(([type, docs]) => docs.map(doc => ({ ...doc, cancerType: type })))
+    .sort((a, b) => new Date(b.processedAt).getTime() - new Date(a.processedAt).getTime());
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -169,33 +183,52 @@ export function DocumentUploadForm() {
         
         <Separator className="my-8" />
 
-        <div className="space-y-6">
-            <h4 className="text-lg font-semibold text-foreground/90 mb-2">Stored Guideline Status</h4>
-            {Object.keys(processedDocuments).length === 0 ? (
-                <p className="text-sm text-muted-foreground">No guideline documents have been processed yet.</p>
-            ) : (
-                <div className="space-y-4">
-                    {Object.entries(processedDocuments).map(([type, docs]) => (
-                        docs.length > 0 && (
-                            <div key={type}>
-                                <h5 className="font-medium">{type}</h5>
-                                <ul className="mt-2 space-y-2 text-sm list-disc list-inside bg-muted/50 p-3 rounded-md">
-                                    {docs.map((doc) => (
-                                        <li key={doc.id} className="flex items-center justify-between">
-                                            <span>
-                                                Processed "{doc.fileName}" on {new Date(doc.processedAt).toLocaleDateString()}.
-                                            </span>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(type, doc.id, doc.fileName)}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )
-                    ))}
-                </div>
-            )}
+        <div className="space-y-4">
+          <h4 className="text-lg font-semibold text-foreground/90">Document Audit Trail</h4>
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cancer Type</TableHead>
+                    <TableHead>File Name</TableHead>
+                    <TableHead>Date Processed</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allDocuments.length > 0 ? (
+                    allDocuments.map((doc) => (
+                      <TableRow key={doc.id}>
+                        <TableCell>
+                          <Badge variant="secondary">{doc.cancerType}</Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">{doc.fileName}</TableCell>
+                        <TableCell>{new Date(doc.processedAt).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(doc.cancerType, doc.id, doc.fileName)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete document</span>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-24 text-center">
+                        No guideline documents have been processed yet.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </div>
          <p className="mt-6 text-xs text-muted-foreground italic">
           Note: PDF content parsing and storage are simulated. This interface demonstrates the upload flow, multi-document management, and providing content to the AI.
