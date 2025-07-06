@@ -9,22 +9,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { cancerTypeOptions } from "@/config/formOptions";
 import React, { useState } from "react";
-import { UploadCloud, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { UploadCloud, Loader2, CheckCircle, AlertCircle, Trash2 } from "lucide-react";
 import { useGuidelineContext } from "@/context/GuidelineContext";
-
-// The shape of the processed document information, aligned with the context
-interface ProcessedDocumentInfo {
-  fileName: string;
-  processedAt: string;
-  content: string; // Storing full simulated content
-}
+import type { ProcessedDocument } from "@/types";
+import { Separator } from "@/components/ui/separator";
 
 export function DocumentUploadForm() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [cancerType, setCancerType] = useState<string>(cancerTypeOptions[0].value);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const { processedDocuments, addProcessedDocument } = useGuidelineContext();
+  const { processedDocuments, addProcessedDocument, deleteProcessedDocument } = useGuidelineContext();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -54,45 +49,32 @@ export function DocumentUploadForm() {
 
     // Simulate creating full, realistic guideline content for the selected cancer type
     let simulatedContent: string;
-    const existingDocument = processedDocuments[cancerType];
 
     switch (cancerType) {
       case 'Colon Cancer':
         simulatedContent = `
-        Simulated NCCN Guideline for Colon Cancer:
+        Simulated NCCN Guideline for Colon Cancer (File: ${selectedFile.name}):
         - Section: Adjuvant Therapy for Stage III Disease
           - For resected Stage III colon cancer (any T, N1-2), adjuvant chemotherapy is the standard of care.
           - Standard regimens include FOLFOX for 6 months or CAPOX for 3-6 months.
-          - For low-risk Stage III (T1-3, N1), 3 months of CAPOX is an option. 
-          - For high-risk Stage III (T4 or N2), 6 months of either FOLFOX or CAPOX is recommended.
-        - Section: Management of Neuroendocrine Tumors (NETs)
-          - For localized, well-differentiated (G1/G2) NETs that have been completely resected, the standard of care is surveillance. Adjuvant therapy is not typically recommended.
         - Section: Management of Metastatic Disease (Stage IV)
-          - Guideline: Comprehensive molecular testing is mandatory (RAS, BRAF, HER2, MSI, NTRK).
-          - Guideline: For MSI-High tumors, first-line immunotherapy (e.g., Pembrolizumab) is preferred, regardless of sidedness.
-          - Guideline: For NTRK Fusion-Positive tumors, a TRK inhibitor (e.g., Larotrectinib) is recommended.
-          - Guideline: For HER2-Positive, RAS Wild-Type tumors, regimens targeting HER2 (e.g., Trastuzumab + Pertuzumab + chemotherapy) are options, particularly in later lines.
-          - Guideline: For BRAF V600E Mutated tumors, a BRAF inhibitor combination (e.g., Encorafenib + Cetuximab) is a standard of care, often with chemotherapy.
-          - Palliative, Fit, Left-Sided, RAS WT: Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + an anti-EGFR antibody (Cetuximab or Panitumumab).
-          - Palliative, Fit, Right-Sided, RAS WT: Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + Bevacizumab. Anti-EGFR therapy is less effective.
-          - Palliative, Fit, RAS Mutated (any side): Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + Bevacizumab. Anti-EGFR is contraindicated.
-          - Palliative, Not Fit: Less intensive options like 5-FU/Capecitabine +/- Bevacizumab, or best supportive care.
-          - Curative Intent (Oligometastatic), Surgery Feasible: Upfront surgery is recommended, followed by adjuvant chemotherapy (e.g., FOLFOX or CAPOX).
-          - Curative Intent (Oligometastatic), Surgery Not Feasible: Neoadjuvant/conversion chemotherapy (e.g., FOLFOX) to shrink tumors, then reassess for surgery.
+          - Guideline: For MSI-High tumors, first-line immunotherapy (e.g., Pembrolizumab) is preferred.
+          - Palliative, Fit, Left-Sided, RAS WT: Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + an anti-EGFR antibody.
         `;
         break;
       case 'Rectal Cancer':
-        simulatedContent = `No guideline document currently available for Rectal Cancer. State that a recommendation cannot be provided due to lack of specific guidelines for Rectal Cancer.`;
+        simulatedContent = `Simulated Guideline for Rectal Cancer (File: ${selectedFile.name}): Total Neoadjuvant Therapy (TNT) is a primary option for locally advanced disease.`;
         break;
       case 'Breast Cancer':
-        simulatedContent = `No guideline document currently available for Breast Cancer. State that a recommendation cannot be provided due to lack of specific guidelines for Breast Cancer.`;
+        simulatedContent = `Simulated Guideline for Breast Cancer (File: ${selectedFile.name}): For ER-positive, HER2-negative breast cancer, endocrine therapy is the cornerstone of treatment.`;
         break;
       default:
-        simulatedContent = `Placeholder content for ${cancerType}.`;
+        simulatedContent = `Placeholder content for ${cancerType} from file ${selectedFile.name}.`;
         break;
     }
 
-    const newDocumentInfo: ProcessedDocumentInfo = {
+    const newDocumentInfo: ProcessedDocument = {
+      id: new Date().toISOString() + selectedFile.name, // Create a unique ID
       fileName: selectedFile.name,
       processedAt: new Date().toISOString(),
       content: simulatedContent,
@@ -101,26 +83,26 @@ export function DocumentUploadForm() {
     addProcessedDocument(cancerType, newDocumentInfo);
     setIsLoading(false);
 
-    if (existingDocument) {
-      toast({
-        title: "Document Updated",
-        description: `Guideline document for ${cancerType} (${selectedFile.name}) has been updated, replacing "${existingDocument.fileName}".`,
-        variant: "default",
-        action: <CheckCircle className="text-green-500" />,
-      });
-    } else {
-      toast({
-        title: "Document Processed",
-        description: `New guideline document for ${cancerType} ("${selectedFile.name}") processed and stored.`,
-        variant: "default",
-        action: <CheckCircle className="text-green-500" />,
-      });
-    }
+    toast({
+      title: "Document Processed",
+      description: `Guideline for ${cancerType} ("${selectedFile.name}") has been added.`,
+      variant: "default",
+      action: <CheckCircle className="text-green-500" />,
+    });
 
     setSelectedFile(null);
     const fileInput = document.getElementById('pdf-upload') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   };
+  
+  const handleDelete = (cancerType: string, docId: string, docName: string) => {
+    deleteProcessedDocument(cancerType, docId);
+    toast({
+        title: "Document Deleted",
+        description: `"${docName}" for ${cancerType} has been removed.`,
+        variant: "destructive"
+    });
+  }
 
   return (
     <Card className="shadow-lg">
@@ -128,7 +110,7 @@ export function DocumentUploadForm() {
         <CardTitle className="text-3xl font-headline text-primary">Manage Guideline Documents</CardTitle>
         <CardDescription>
           Upload and simulate processing of NCCN (or equivalent) guideline documents (PDFs).
-          Uploading a new document for a specific cancer type will replace any existing document for that type.
+          You can add multiple documents for each cancer type.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -179,28 +161,44 @@ export function DocumentUploadForm() {
             ) : (
               <>
                 <UploadCloud className="mr-2 h-4 w-4" />
-                {processedDocuments[cancerType] ? "Update Document" : "Process & Store Document"}
+                Process & Store Document
               </>
             )}
           </Button>
         </form>
         
-        <div className="mt-8">
+        <Separator className="my-8" />
+
+        <div className="space-y-6">
             <h4 className="text-lg font-semibold text-foreground/90 mb-2">Stored Guideline Status</h4>
             {Object.keys(processedDocuments).length === 0 ? (
                 <p className="text-sm text-muted-foreground">No guideline documents have been processed yet.</p>
             ) : (
-                <ul className="space-y-2 text-sm list-disc list-inside">
-                    {Object.entries(processedDocuments).map(([type, info]) => (
-                        <li key={type}>
-                            <span className="font-medium">{type}:</span> Processed "{info.fileName}" on {new Date(info.processedAt).toLocaleDateString()}.
-                        </li>
+                <div className="space-y-4">
+                    {Object.entries(processedDocuments).map(([type, docs]) => (
+                        docs.length > 0 && (
+                            <div key={type}>
+                                <h5 className="font-medium">{type}</h5>
+                                <ul className="mt-2 space-y-2 text-sm list-disc list-inside bg-muted/50 p-3 rounded-md">
+                                    {docs.map((doc) => (
+                                        <li key={doc.id} className="flex items-center justify-between">
+                                            <span>
+                                                Processed "{doc.fileName}" on {new Date(doc.processedAt).toLocaleDateString()}.
+                                            </span>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(type, doc.id, doc.fileName)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )
                     ))}
-                </ul>
+                </div>
             )}
         </div>
          <p className="mt-6 text-xs text-muted-foreground italic">
-          Note: PDF content parsing and storage are simulated. This interface demonstrates the upload flow, replacement logic, and providing content to the AI.
+          Note: PDF content parsing and storage are simulated. This interface demonstrates the upload flow, multi-document management, and providing content to the AI.
         </p>
       </CardContent>
     </Card>

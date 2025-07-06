@@ -2,19 +2,13 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { AuditEntry } from '@/types';
-
-// Define the shape of the processed document information
-interface ProcessedDocument {
-  fileName: string;
-  processedAt: string;
-  content: string; // Storing full simulated content
-}
+import type { AuditEntry, ProcessedDocument } from '@/types';
 
 // Define the shape of the context state
 interface GuidelineContextType {
-  processedDocuments: Record<string, ProcessedDocument>;
+  processedDocuments: Record<string, ProcessedDocument[]>; // Now an array of documents
   addProcessedDocument: (cancerType: string, docInfo: ProcessedDocument) => void;
+  deleteProcessedDocument: (cancerType: string, documentId: string) => void;
   auditEntries: AuditEntry[];
   addAuditEntry: (entry: AuditEntry) => void;
 }
@@ -24,14 +18,33 @@ const GuidelineContext = createContext<GuidelineContextType | undefined>(undefin
 
 // Create the provider component
 export const GuidelineProvider = ({ children }: { children: ReactNode }) => {
-  const [processedDocuments, setProcessedDocuments] = useState<Record<string, ProcessedDocument>>({});
+  const [processedDocuments, setProcessedDocuments] = useState<Record<string, ProcessedDocument[]>>({});
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
 
   const addProcessedDocument = (cancerType: string, docInfo: ProcessedDocument) => {
-    setProcessedDocuments(prev => ({
-      ...prev,
-      [cancerType]: docInfo,
-    }));
+    setProcessedDocuments(prev => {
+      const existingDocs = prev[cancerType] || [];
+      return {
+        ...prev,
+        [cancerType]: [...existingDocs, docInfo],
+      };
+    });
+  };
+
+  const deleteProcessedDocument = (cancerType: string, documentId: string) => {
+    setProcessedDocuments(prev => {
+        const docsForType = prev[cancerType] || [];
+        const updatedDocs = docsForType.filter(doc => doc.id !== documentId);
+        
+        const newDocs = { ...prev, [cancerType]: updatedDocs };
+
+        // If no documents remain for a cancer type, remove the key
+        if (updatedDocs.length === 0) {
+            delete newDocs[cancerType];
+        }
+
+        return newDocs;
+    });
   };
 
   const addAuditEntry = (entry: AuditEntry) => {
@@ -41,6 +54,7 @@ export const GuidelineProvider = ({ children }: { children: ReactNode }) => {
   const value = { 
     processedDocuments, 
     addProcessedDocument,
+    deleteProcessedDocument,
     auditEntries,
     addAuditEntry
   };

@@ -198,11 +198,11 @@ export function CaseAssessmentForm() {
     setLastSubmittedValues(values);
     setIsRecommendationFinalized(false);
     
-    // Check if there is an uploaded guideline for the selected cancer type
-    const guidelineFromContext = values.cancerType ? processedDocuments[values.cancerType] : undefined;
-    
+    const guidelinesForType = (values.cancerType && processedDocuments[values.cancerType]) || [];
+    const useUploadedGuidelines = guidelinesForType.length > 0;
+
     // The "available" guidelines are now determined by what's in the context or hardcoded as a fallback.
-    // We will show a dialog only for types that have no context entry and no hardcoded fallback.
+    // If there's no context entry, we check if there's a hardcoded fallback before showing the dialog.
     const hardcodedFallbacks: Record<string, boolean> = {
         'Colon Cancer': true,
         'Rectal Cancer': true, 
@@ -210,22 +210,25 @@ export function CaseAssessmentForm() {
         'Other': true,
     };
     
-    if (values.cancerType && !guidelineFromContext && !hardcodedFallbacks[values.cancerType]) {
+    if (values.cancerType && !useUploadedGuidelines && !hardcodedFallbacks[values.cancerType]) {
         setDialogState({ open: true, cancerType: values.cancerType });
         setIsLoading(false);
         return;
     }
 
     let guidelineDocumentContent: string;
+    let usedFileNames: string[] = [];
     
-    if (guidelineFromContext) {
-        guidelineDocumentContent = guidelineFromContext.content;
+    if (useUploadedGuidelines) {
+        guidelineDocumentContent = guidelinesForType.map(doc => doc.content).join('\n\n---\n\n');
+        usedFileNames = guidelinesForType.map(doc => doc.fileName);
         toast({
-            title: "Using Uploaded Guideline",
-            description: `Basing recommendation on "${guidelineFromContext.fileName}".`,
+            title: `Using ${usedFileNames.length} Uploaded Guideline(s)`,
+            description: `Basing recommendation on: ${usedFileNames.join(', ')}.`,
         });
     } else {
         // Fallback to default hardcoded content if no document was "uploaded"
+        usedFileNames.push("Default Simulated Guideline");
         switch (values.cancerType) {
             case 'Colon Cancer':
                 guidelineDocumentContent = `
@@ -319,13 +322,16 @@ export function CaseAssessmentForm() {
         });
       }
 
+      const { guidelineDocumentContent: _, ...formValuesForAudit } = submissionData;
+
       addAuditEntry({
-        ...submissionData,
+        ...formValuesForAudit,
         id: new Date().toISOString(), 
         timestamp: new Date(),
         recommendation: result.recommendation,
         references: result.references,
         noRecommendationReason: result.noRecommendationReason,
+        usedGuidelineFiles,
       });
 
     } catch (error) {

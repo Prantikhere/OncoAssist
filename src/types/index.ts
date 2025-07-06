@@ -1,6 +1,14 @@
 
 import type { AllTreatmentInput, CancerTreatmentOutput } from "@/ai/flows"; // Assuming index.ts in flows
 
+// The processed document, now with a unique ID for deletion
+export interface ProcessedDocument {
+  id: string; 
+  fileName: string;
+  processedAt: string;
+  content: string;
+}
+
 // AuditEntry now combines the input used and the structured output from the AI flow
 export interface AuditEntry extends Omit<AllTreatmentInput, 'guidelineDocumentContent'> { // Omit to avoid storing potentially large doc content
   id: string;
@@ -12,6 +20,6 @@ export interface AuditEntry extends Omit<AllTreatmentInput, 'guidelineDocumentCo
   references?: string;
   noRecommendationReason?: string;
   
-  // It might be useful to store which guideline version or a hash of content was used, if available
-  // For now, we assume guidelineDocumentContent was used but not stored in audit for brevity
+  // Record which guideline files were used for this entry
+  usedGuidelineFiles?: string[];
 }
