@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -30,6 +29,11 @@ interface AuditTrailTableProps {
 
 export function AuditTrailTable({ entries }: AuditTrailTableProps) {
   const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   if (!entries || entries.length === 0) {
     return (
@@ -78,7 +82,7 @@ export function AuditTrailTable({ entries }: AuditTrailTableProps) {
               <TableBody>
                 {entries.map((entry) => (
                   <TableRow key={entry.id} onClick={() => setSelectedEntry(entry)} className="cursor-pointer">
-                    <TableCell>{new Date(entry.timestamp).toLocaleString()}</TableCell>
+                    <TableCell>{isMounted ? new Date(entry.timestamp).toLocaleString() : '...'}</TableCell>
                     <TableCell>
                       <Badge variant={entry.cancerType === 'Colon Cancer' ? 'default' : 'secondary'}>
                         {entry.cancerType}
@@ -110,7 +114,7 @@ export function AuditTrailTable({ entries }: AuditTrailTableProps) {
             <DialogHeader>
                 <DialogTitle>Audit Entry Details</DialogTitle>
                 <DialogDescription>
-                Complete details for the case assessment generated on {selectedEntry && new Date(selectedEntry.timestamp).toLocaleString()}.
+                Complete details for the case assessment generated on {selectedEntry && isMounted ? new Date(selectedEntry.timestamp).toLocaleString() : '...'}.
                 </DialogDescription>
             </DialogHeader>
             <ScrollArea className="h-full pr-6">

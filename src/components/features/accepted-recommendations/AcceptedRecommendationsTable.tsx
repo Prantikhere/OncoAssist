@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -20,12 +19,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import type { AuditEntry } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import React, { useState, useEffect } from 'react';
 
 interface AcceptedRecommendationsTableProps {
   entries: AuditEntry[];
 }
 
 export function AcceptedRecommendationsTable({ entries }: AcceptedRecommendationsTableProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   if (!entries || entries.length === 0) {
     return (
       <Card className="shadow-lg">
@@ -54,7 +60,7 @@ export function AcceptedRecommendationsTable({ entries }: AcceptedRecommendation
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full pr-4 gap-2">
                     <div className="flex items-center gap-4 text-left">
                         <Badge variant="default" className="w-32 justify-center shrink-0">{entry.cancerType}</Badge>
-                        <div className="font-mono text-sm text-muted-foreground">{new Date(entry.timestamp).toLocaleString()}</div>
+                        <div className="font-mono text-sm text-muted-foreground">{isMounted ? new Date(entry.timestamp).toLocaleString() : '...'}</div>
                     </div>
                     <div className="flex items-center gap-2 self-end sm:self-auto">
                         <Badge variant="outline">{entry.tStage}</Badge>
