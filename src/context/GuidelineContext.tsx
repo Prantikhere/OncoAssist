@@ -22,9 +22,6 @@ const GuidelineContext = createContext<GuidelineContextType | undefined>(undefin
 
 // Helper to safely parse JSON from localStorage
 const loadFromLocalStorage = (key: string, isDateObject = false) => {
-    if (typeof window === 'undefined') {
-        return isDateObject ? [] : {};
-    }
     try {
         const item = window.localStorage.getItem(key);
         if (!item) return isDateObject ? [] : {};
@@ -43,26 +40,38 @@ const loadFromLocalStorage = (key: string, isDateObject = false) => {
 
 // Create the provider component
 export const GuidelineProvider = ({ children }: { children: ReactNode }) => {
-  const [processedDocuments, setProcessedDocuments] = useState<Record<string, ProcessedDocument[]>>(() => loadFromLocalStorage(PROCESSED_DOCS_KEY));
-  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>(() => loadFromLocalStorage(AUDIT_ENTRIES_KEY, true));
+  const [processedDocuments, setProcessedDocuments] = useState<Record<string, ProcessedDocument[]>>({});
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Load from localStorage only on the client, after the initial render
+  useEffect(() => {
+    setProcessedDocuments(loadFromLocalStorage(PROCESSED_DOCS_KEY));
+    setAuditEntries(loadFromLocalStorage(AUDIT_ENTRIES_KEY, true));
+    setIsMounted(true);
+  }, []);
 
   // Effect to save processedDocuments to localStorage
   useEffect(() => {
-    try {
-        window.localStorage.setItem(PROCESSED_DOCS_KEY, JSON.stringify(processedDocuments));
-    } catch (error) {
-        console.error("Error writing processedDocuments to localStorage", error);
+    if (isMounted) {
+        try {
+            window.localStorage.setItem(PROCESSED_DOCS_KEY, JSON.stringify(processedDocuments));
+        } catch (error) {
+            console.error("Error writing processedDocuments to localStorage", error);
+        }
     }
-  }, [processedDocuments]);
+  }, [processedDocuments, isMounted]);
 
   // Effect to save auditEntries to localStorage
   useEffect(() => {
-    try {
-        window.localStorage.setItem(AUDIT_ENTRIES_KEY, JSON.stringify(auditEntries));
-    } catch (error) {
-        console.error("Error writing auditEntries to localStorage", error);
+    if (isMounted) {
+        try {
+            window.localStorage.setItem(AUDIT_ENTRIES_KEY, JSON.stringify(auditEntries));
+        } catch (error) {
+            console.error("Error writing auditEntries to localStorage", error);
+        }
     }
-  }, [auditEntries]);
+  }, [auditEntries, isMounted]);
 
 
   const addProcessedDocument = (cancerType: string, docInfo: ProcessedDocument) => {
