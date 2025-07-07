@@ -201,71 +201,27 @@ export function CaseAssessmentForm() {
     const guidelinesForType = (values.cancerType && processedDocuments[values.cancerType]) || [];
     const useUploadedGuidelines = guidelinesForType.length > 0;
 
-    // The "available" guidelines are now determined by what's in the context or hardcoded as a fallback.
-    // If there's no context entry, we check if there's a hardcoded fallback before showing the dialog.
-    const hardcodedFallbacks: Record<string, boolean> = {
-        'Colon Cancer': true,
-        'Rectal Cancer': true, 
-        'Breast Cancer': true,
-        'Other': true,
-    };
-    
-    if (values.cancerType && !useUploadedGuidelines && !hardcodedFallbacks[values.cancerType]) {
-        setDialogState({ open: true, cancerType: values.cancerType });
+    // CRITICAL: Enforce that uploaded guidelines must be present. Remove all fallback logic.
+    if (!useUploadedGuidelines) {
+        toast({
+            title: "Guideline Document Required",
+            description: `Please upload at least one guideline document for ${values.cancerType} before generating a recommendation.`,
+            variant: "destructive",
+            duration: 5000,
+        });
+        if (values.cancerType) {
+          setDialogState({ open: true, cancerType: values.cancerType });
+        }
         setIsLoading(false);
         return;
     }
 
-    let guidelineDocumentContent: string;
-    let usedFileNames: string[] = [];
-    
-    if (useUploadedGuidelines) {
-        guidelineDocumentContent = guidelinesForType.map(doc => `--- START OF DOCUMENT: ${doc.fileName} ---\n\n${doc.content}\n\n--- END OF DOCUMENT: ${doc.fileName} ---`).join('\n\n');
-        usedFileNames = guidelinesForType.map(doc => doc.fileName);
-        toast({
-            title: `Using ${usedFileNames.length} Uploaded Guideline(s)`,
-            description: `Basing recommendation on: ${usedFileNames.join(', ')}.`,
-        });
-    } else {
-        // Fallback to default hardcoded content if no document was "uploaded"
-        usedFileNames.push("Default Simulated Guideline");
-        switch (values.cancerType) {
-            case 'Colon Cancer':
-                guidelineDocumentContent = `
-                Simulated NCCN Guideline for Colon Cancer:
-                - Section: Adjuvant Therapy for Stage III Disease
-                  - For resected Stage III colon cancer (any T, N1-2), adjuvant chemotherapy is the standard of care.
-                  - Standard regimens include FOLFOX for 6 months or CAPOX for 3-6 months.
-                  - For low-risk Stage III (T1-3, N1), 3 months of CAPOX is an option. 
-                  - For high-risk Stage III (T4 or N2), 6 months of either FOLFOX or CAPOX is recommended.
-                - Section: Management of Neuroendocrine Tumors (NETs)
-                  - For localized, well-differentiated (G1/G2) NETs that have been completely resected, the standard of care is surveillance. Adjuvant therapy is not typically recommended.
-                - Section: Management of Metastatic Disease (Stage IV)
-                  - Guideline: Comprehensive molecular testing is mandatory (RAS, BRAF, HER2, MSI, NTRK).
-                  - Guideline: For MSI-High tumors, first-line immunotherapy (e.g., Pembrolizumab) is preferred, regardless of sidedness.
-                  - Guideline: For NTRK Fusion-Positive tumors, a TRK inhibitor (e.g., Larotrectinib) is recommended.
-                  - Guideline: For HER2-Positive, RAS Wild-Type tumors, regimens targeting HER2 (e.g., Trastuzumab + Pertuzumab + chemotherapy) are options, particularly in later lines.
-                  - Guideline: For BRAF V600E Mutated tumors, a BRAF inhibitor combination (e.g., Encorafenib + Cetuximab) is a standard of care, often with chemotherapy.
-                  - Palliative, Fit, Left-Sided, RAS WT: Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + an anti-EGFR antibody (Cetuximab or Panitumumab).
-                  - Palliative, Fit, Right-Sided, RAS WT: Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + Bevacizumab. Anti-EGFR therapy is less effective.
-                  - Palliative, Fit, RAS Mutated (any side): Preferred first-line is chemotherapy (FOLFIRI or FOLFOX) + Bevacizumab. Anti-EGFR is contraindicated.
-                  - Palliative, Not Fit: Less intensive options like 5-FU/Capecitabine +/- Bevacizumab, or best supportive care.
-                  - Curative Intent (Oligometastatic), Surgery Feasible: Upfront surgery is recommended, followed by adjuvant chemotherapy (e.g., FOLFOX or CAPOX).
-                  - Curative Intent (Oligometastatic), Surgery Not Feasible: Neoadjuvant/conversion chemotherapy (e.g., FOLFOX) to shrink tumors, then reassess for surgery.
-                `;
-                break;
-            case 'Rectal Cancer':
-                guidelineDocumentContent = `No guideline document currently available for Rectal Cancer. State that a recommendation cannot be provided due to lack of specific guidelines for Rectal Cancer.`;
-                break;
-            case 'Breast Cancer':
-                guidelineDocumentContent = `No guideline document currently available for Breast Cancer. State that a recommendation cannot be provided due to lack of specific guidelines for Breast Cancer.`;
-                break;
-            case 'Other':
-            default:
-                guidelineDocumentContent = `Placeholder: No specific PDF uploaded or content not extracted for 'Other' cancer types. The AI should state that it cannot provide a recommendation without a relevant guideline document for the specified 'Other' cancer type.`;
-                break;
-        }
-    }
+    const guidelineDocumentContent = guidelinesForType.map(doc => `--- START OF DOCUMENT: ${doc.fileName} ---\n\n${doc.content}\n\n--- END OF DOCUMENT: ${doc.fileName} ---`).join('\n\n');
+    const usedFileNames = guidelinesForType.map(doc => doc.fileName);
+    toast({
+        title: `Using ${usedFileNames.length} Uploaded Guideline(s)`,
+        description: `Basing recommendation on: ${usedFileNames.join(', ')}.`,
+    });
     
     let submissionData: AllTreatmentInput;
     switch (values.cancerType) {
@@ -613,7 +569,7 @@ export function CaseAssessmentForm() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>No, continue without</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => router.push('/upload')}>
               Yes, upload guidelines
             </AlertDialogAction>

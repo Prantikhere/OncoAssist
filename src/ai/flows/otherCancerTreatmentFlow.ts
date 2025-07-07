@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview Handles cases for 'Other' cancer types, typically indicating missing specific guidelines.
+ * @fileOverview Handles cases for 'Other' cancer types by applying provided guidelines.
  *
  * - diagnoseOtherCancer - A function that handles the 'Other' cancer type scenario.
  * - OtherCancerTreatmentInput - The input type (defined in treatmentFlowTypes.ts).
@@ -21,25 +21,38 @@ const otherCancerPrompt = ai.definePrompt({
   name: 'otherCancerGuidelinePrompt',
   input: { schema: OtherCancerTreatmentInputSchema },
   output: { schema: CancerTreatmentOutputSchema },
-  prompt: `You are an AI assistant. The user has selected 'Other' as the cancer type.
-This typically means specific guidelines for this cancer type are not yet integrated or a specific document was not uploaded.
+  prompt: `You are an expert oncologist AI. The user has specified a cancer type of 'Other' and provided one or more clinical guideline documents. Your task is to generate a final, clear, and concise treatment recommendation and extract supporting references based *exclusively* on the provided documents.
 
-Your response should be:
-- 'recommendation': "Cannot provide a specific treatment recommendation for 'Other' cancer types without a relevant uploaded NCCN (or equivalent) clinical guideline document. Please specify the cancer type if known and upload corresponding guidelines."
-- 'references': "N/A"
-- 'noRecommendationReason': "Guidelines for 'Other' unspecified cancer types are not available or a specific document was not provided."
+**CRITICAL INSTRUCTIONS:**
+1.  Your entire response, including all clinical reasoning, MUST be based EXCLUSIVELY on the information within the provided "Clinical Guidelines Document Content". This content may be a consolidation of multiple documents, each clearly marked with '--- START OF DOCUMENT: [filename] ---' and '--- END OF DOCUMENT: [filename] ---'. Do NOT use any external knowledge.
+2.  Analyze the provided document(s) to find information relevant to the patient's case details.
+3.  If the provided guideline content is insufficient or does not contain information applicable to the patient's case, you must state this clearly in the 'recommendation' field, set 'references' to "N/A", and explain the reason in 'noRecommendationReason' (e.g., "The provided document 'xyz.pdf' does not contain guidelines for the patient's tumor type.").
+4.  EXTRACT specific verbatim quotes or detailed section/page references from the guideline content that directly support EACH key part of your final recommendation. **When extracting a reference, you MUST cite the source document's filename.**
 
-The 'guidelineDocumentContent' provided by the user for 'Other' cancer type was:
+**INPUTS:**
+
+Clinical Guidelines Document Content:
 {{{guidelineDocumentContent}}}
 
-Patient Case Details (for context, but recommendation should be generic as above):
+Patient Case Details:
 Cancer Type: {{{cancerType}}}
 Diagnostic Confirmation: {{{diagnosticConfirmation}}}
 Staging Evaluation: {{{stagingEvaluation}}}
 Disease Extent: {{{diseaseExtent}}}
 Surgical Procedure: {{{surgicalProcedure}}}
+Lymph Node Assessment: {{{lymphNodeAssessment}}}
+Post-Surgery Analysis: {{{postSurgeryAnalysis}}}
+Tumor Type: {{{tumorType}}}
+Grade: {{{grade}}}
+T Stage: {{{tStage}}}
+N Stage: {{{nStage}}}
+{{#if vascularLymphaticInvasion}}
+Vascular/Lymphatic Invasion: Yes
+{{else}}
+Vascular/Lymphatic Invasion: No
+{{/if}}
 
-Provide your output in the specified JSON format.`,
+Provide your output in the specified JSON format with fields: 'recommendation', 'references', and 'noRecommendationReason' (if applicable).`,
 });
 
 const otherCancerTreatmentFlow = ai.defineFlow(
@@ -52,16 +65,12 @@ const otherCancerTreatmentFlow = ai.defineFlow(
     const { output } = await otherCancerPrompt(input);
     if (!output) {
       return {
-        recommendation: "Error: AI model did not return an output for 'Other' cancer type.",
+        recommendation: "Failed to generate a recommendation. The AI model may have not returned the expected output.",
         references: "N/A",
         noRecommendationReason: "AI model processing error."
       };
     }
-     return {
-        recommendation: output.recommendation || "Cannot provide a specific treatment recommendation for 'Other' cancer types without a relevant uploaded NCCN (or equivalent) clinical guideline document.",
-        references: output.references || "N/A",
-        noRecommendationReason: output.noRecommendationReason || "Guidelines for 'Other' unspecified cancer types are not available or a specific document was not provided."
-    };
+    return output;
   }
 );
 

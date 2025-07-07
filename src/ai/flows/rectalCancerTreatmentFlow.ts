@@ -25,11 +25,10 @@ const rectalCancerTreatmentPrompt = ai.definePrompt({
   prompt: `You are an expert oncologist AI specializing in Rectal Cancer. Your task is to generate a final, clear, and concise treatment recommendation and extract supporting references.
 
 **CRITICAL INSTRUCTIONS:**
-1.  Your entire response MUST be based EXCLUSIVELY on the information within the provided "Clinical Guidelines Document Content". This content may be a consolidation of multiple documents, each clearly marked with '--- START OF DOCUMENT: [filename] ---' and '--- END OF DOCUMENT: [filename] ---'. Do NOT use any external knowledge.
-2.  If the guideline content explicitly states it's unavailable, is a generic placeholder, or does not contain specific information for Rectal Cancer, you MUST state this clearly in the 'recommendation' field and set 'references' to "N/A". Your 'noRecommendationReason' field should explain that the specific guidelines for Rectal Cancer were not provided.
-3.  If the guideline content appears relevant, generate a concise, preliminary recommendation based SOLELY on the provided content and the patient's case details.
+1.  Your entire response, including all clinical reasoning, MUST be based EXCLUSIVELY on the information within the provided "Clinical Guidelines Document Content". This content may be a consolidation of multiple documents, each clearly marked with '--- START OF DOCUMENT: [filename] ---' and '--- END OF DOCUMENT: [filename] ---'. Do NOT use any external knowledge.
+2.  This includes determining the patient's cancer stage. You must find the relevant staging definitions within the provided guideline documents based on the patient's T and N stage data to inform your recommendation. Do NOT assume any T-stage to Cancer-Stage mappings.
+3.  If the guideline content is insufficient to make a recommendation (e.g., staging information is missing from the document), you must state this clearly in the 'recommendation' field, set 'references' to "N/A", and explain the reason in 'noRecommendationReason'.
 4.  EXTRACT specific verbatim quotes or detailed section/page references from the guideline content that directly support EACH key part of your final recommendation. **When extracting a reference, you MUST cite the source document's filename.** These references are crucial.
-5.  When analyzing the patient's case, interpret the 'T Stage' to determine the overall cancer stage for finding information within the guidelines. Use this mapping: 'T1' and its sub-variants map to Stage I Cancer; 'T2' maps to Stage II Cancer; 'T3' maps to Stage III Cancer; and 'T4' and its sub-variants (T4a, T4b) map to Stage IV Cancer.
 
 **INPUTS:**
 
@@ -65,16 +64,6 @@ const rectalCancerTreatmentFlow = ai.defineFlow(
     outputSchema: CancerTreatmentOutputSchema,
   },
   async (input) => {
-    // Handle placeholder guideline content upfront for early exit
-    if (input.guidelineDocumentContent.startsWith("Placeholder: No PDF uploaded") || 
-        input.guidelineDocumentContent.includes("No guideline document currently available for Rectal Cancer")) {
-        return {
-            recommendation: "No specific guideline document is currently available for Rectal Cancer to generate a treatment recommendation. Please upload the relevant NCCN (or equivalent) guidelines for Rectal Cancer.",
-            references: "N/A",
-            noRecommendationReason: "Guideline document for Rectal Cancer is unavailable or a placeholder was provided."
-        };
-    }
-    
     const { output } = await rectalCancerTreatmentPrompt(input);
 
      if (!output) {

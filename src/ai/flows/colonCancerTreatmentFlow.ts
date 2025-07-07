@@ -25,10 +25,10 @@ const colonCancerTreatmentPrompt = ai.definePrompt({
   prompt: `You are an expert oncologist AI specializing in Colon Cancer. Your task is to generate a final, clear, and concise treatment recommendation and extract supporting references based *exclusively* on the provided clinical guidelines.
 
 **CRITICAL INSTRUCTIONS:**
-1.  Your entire response MUST be based EXCLUSIVELY on the information within the provided "Clinical Guidelines Document Content". This content may be a consolidation of multiple documents, each clearly marked with '--- START OF DOCUMENT: [filename] ---' and '--- END OF DOCUMENT: [filename] ---'. Do NOT use any external knowledge.
-2.  If the guideline content is insufficient or a placeholder, you must state this clearly in the 'recommendation' field, set 'references' to "N/A", and explain the reason in 'noRecommendationReason'.
-3.  EXTRACT specific verbatim quotes or detailed section/page references from the guideline content that directly support EACH key part of your final recommendation. **When extracting a reference, you MUST cite the source document's filename.**
-4.  When analyzing the patient's case, interpret the 'T Stage' to determine the overall cancer stage for finding information within the guidelines. Use this mapping: 'T1' and its sub-variants map to Stage I Cancer; 'T2' maps to Stage II Cancer; 'T3' maps to Stage III Cancer; and 'T4' and its sub-variants (T4a, T4b) map to Stage IV Cancer.
+1.  Your entire response, including all clinical reasoning, MUST be based EXCLUSIVELY on the information within the provided "Clinical Guidelines Document Content". This content may be a consolidation of multiple documents, each clearly marked with '--- START OF DOCUMENT: [filename] ---' and '--- END OF DOCUMENT: [filename] ---'. Do NOT use any external knowledge.
+2.  This includes determining the patient's cancer stage. You must find the relevant staging definitions within the provided guideline documents based on the patient's T and N stage data to inform your recommendation. Do NOT assume any T-stage to Cancer-Stage mappings.
+3.  If the guideline content is insufficient to make a recommendation (e.g., staging information is missing from the document), you must state this clearly in the 'recommendation' field, set 'references' to "N/A", and explain the reason in 'noRecommendationReason'.
+4.  EXTRACT specific verbatim quotes or detailed section/page references from the guideline content that directly support EACH key part of your final recommendation. **When extracting a reference, you MUST cite the source document's filename.**
 
 **Clinical Guidelines Document Content:**
 {{{guidelineDocumentContent}}}
@@ -50,16 +50,8 @@ Follow this algorithm for the metastatic case provided.
 
 **2. Treatment Intent:**
 *   Intent: {{{treatmentIntent}}}
-    {{#if isSurgeryFeasible}}
-    *   Curative Intent - Surgery Feasible: Yes
-    {{else}}
-    *   Curative Intent - Surgery Feasible: No
-    {{/if}}
-    {{#if isFitForIntensiveTherapy}}
-    *   Palliative Intent - Fit for Intensive Therapy: Yes
-    {{else}}
-    *   Palliative Intent - Fit for Intensive Therapy: No
-    {{/if}}
+    *   Curative Intent - Surgery Feasible: {{isSurgeryFeasible}}
+    *   Palliative Intent - Fit for Intensive Therapy: {{isFitForIntensiveTherapy}}
 
 **3. Recommendation Generation:**
 Synthesize the above data points and provide a specific treatment recommendation by strictly following the logic in the "Management of Metastatic Disease (Stage IV)" section of the provided guidelines.
@@ -98,16 +90,6 @@ const colonCancerTreatmentFlow = ai.defineFlow(
     outputSchema: CancerTreatmentOutputSchema,
   },
   async (input) => {
-    // Handle placeholder guideline content upfront for early exit
-    if (input.guidelineDocumentContent.startsWith("Placeholder: No PDF uploaded") || 
-        input.guidelineDocumentContent.includes("No guideline document currently available for Colon Cancer")) {
-        return {
-            recommendation: "No specific guideline document is currently available for Colon Cancer to generate a treatment recommendation. Please upload the relevant NCCN (or equivalent) guidelines for Colon Cancer.",
-            references: "N/A",
-            noRecommendationReason: "Guideline document for Colon Cancer is unavailable or a placeholder was provided."
-        };
-    }
-
     const { output } = await colonCancerTreatmentPrompt(input);
 
     if (!output) {
