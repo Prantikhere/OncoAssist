@@ -1,10 +1,10 @@
-
 "use client";
 
 import { useGuidelineContext } from "@/context/GuidelineContext";
 import { AuditTrailTable } from "@/components/features/audit-trail/AuditTrailTable";
+import { Suspense } from "react";
 
-export default function AuditPage() {
+function AuditPageContent() {
   const { auditEntries } = useGuidelineContext();
   
   // This page now consumes the audit entries from the shared context
@@ -12,5 +12,13 @@ export default function AuditPage() {
   // This makes the audit trail persistent across the user's session.
   return (
     <AuditTrailTable entries={auditEntries} />
+  );
+}
+
+export default function AuditPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AuditPageContent />
+    </Suspense>
   );
 }
