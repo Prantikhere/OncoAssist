@@ -50,15 +50,15 @@ export function AcceptedRecommendationsTable({ entries }: AcceptedRecommendation
         <Accordion type="multiple" className="w-full space-y-2">
           {entries.map((entry) => (
             <AccordionItem key={entry.id} value={entry.id} className="border rounded-lg px-4 bg-background">
-              <AccordionTrigger className="hover:no-underline">
-                <div className="flex justify-between items-center w-full pr-4">
+              <AccordionTrigger className="hover:no-underline text-left">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full pr-4 gap-2">
                     <div className="flex items-center gap-4 text-left">
-                        <Badge variant="default" className="w-32 justify-center">{entry.cancerType}</Badge>
+                        <Badge variant="default" className="w-32 justify-center shrink-0">{entry.cancerType}</Badge>
                         <div className="font-mono text-sm text-muted-foreground">{new Date(entry.timestamp).toLocaleString()}</div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{entry.tStage}</span>
-                        <span className="text-sm font-medium">{entry.nStage}</span>
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                        <Badge variant="outline">{entry.tStage}</Badge>
+                        <Badge variant="outline">{entry.nStage}</Badge>
                     </div>
                 </div>
               </AccordionTrigger>
