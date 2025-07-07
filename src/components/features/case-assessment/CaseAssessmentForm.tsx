@@ -123,6 +123,7 @@ export function CaseAssessmentForm() {
   const [recommendationOutput, setRecommendationOutput] = useState<CancerTreatmentOutput | null>(null);
   const [currentFormInputForDisplay, setCurrentFormInputForDisplay] = useState<AllTreatmentInput | null>(null);
   const [lastSubmittedValues, setLastSubmittedValues] = useState<CaseFormValues | null>(null);
+  const [currentAuditEntryId, setCurrentAuditEntryId] = useState<string | null>(null);
   const [isRecommendationFinalized, setIsRecommendationFinalized] = useState(false);
   
   const [dialogState, setDialogState] = useState<{ open: boolean; cancerType: string }>({
@@ -130,7 +131,7 @@ export function CaseAssessmentForm() {
     cancerType: '',
   });
 
-  const { processedDocuments, addAuditEntry } = useGuidelineContext();
+  const { processedDocuments, addAuditEntry, updateAuditEntry } = useGuidelineContext();
 
   const form = useForm<CaseFormValues>({
     resolver: zodResolver(formSchema),
@@ -177,11 +178,30 @@ export function CaseAssessmentForm() {
 
   const showMetastaticFields = watchedCancerType === 'Colon Cancer' && watchedDiseaseExtent === 'Metastatic';
 
-  const handleAccept = () => {
+  const handleAccept = (doctorsNote: string) => {
+    if (!currentAuditEntryId) {
+      toast({
+        title: "Error",
+        description: "Could not find the recommendation to accept. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateAuditEntry(currentAuditEntryId, {
+      isAccepted: true,
+      doctorsNote: doctorsNote,
+    });
+    
     setIsRecommendationFinalized(true);
     toast({
       title: "Recommendation Accepted",
-      description: "The current recommendation has been marked as accepted.",
+      description: "The recommendation and doctor's note have been saved.",
+      action: (
+        <Button variant="outline" size="sm" onClick={() => router.push('/accepted-recommendations')}>
+            View
+        </Button>
+      )
     });
   };
 
@@ -196,13 +216,12 @@ export function CaseAssessmentForm() {
     setRecommendationOutput(null);
     setCurrentFormInputForDisplay(null);
     setLastSubmittedValues(values);
+    setCurrentAuditEntryId(null);
     setIsRecommendationFinalized(false);
     
     const guidelinesForType = (values.cancerType && processedDocuments[values.cancerType]) || [];
-    const useUploadedGuidelines = guidelinesForType.length > 0;
-
-    // CRITICAL: Enforce that uploaded guidelines must be present. Remove all fallback logic.
-    if (!useUploadedGuidelines) {
+    
+    if (guidelinesForType.length === 0) {
         toast({
             title: "Guideline Document Required",
             description: `Please upload at least one guideline document for ${values.cancerType} before generating a recommendation.`,
@@ -279,16 +298,21 @@ export function CaseAssessmentForm() {
       }
 
       const { guidelineDocumentContent: _, ...formValuesForAudit } = submissionData;
-
+      
+      const newEntryId = new Date().toISOString() + Math.random();
       addAuditEntry({
         ...formValuesForAudit,
-        id: new Date().toISOString(), 
+        id: newEntryId, 
         timestamp: new Date(),
         recommendation: result.recommendation,
         references: result.references,
         noRecommendationReason: result.noRecommendationReason,
         usedGuidelineFiles: usedFileNames,
+        isAccepted: false,
+        doctorsNote: '',
       });
+      setCurrentAuditEntryId(newEntryId);
+
 
     } catch (error) {
       console.error("Error generating recommendation:", error);
@@ -425,7 +449,7 @@ export function CaseAssessmentForm() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-3xl font-headline text-primary">Case Assessment</CardTitle>
-            <CardDescription>Enter patient case details. Recommendation will be based on uploaded NCCN guideline documents specific to the cancer type.</CardDescription>
+            <CardDescription>Enter patient case details. Recommendation will be based on uploaded guideline documents specific to the cancer type.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>

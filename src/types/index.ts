@@ -22,4 +22,8 @@ export interface AuditEntry extends Omit<AllTreatmentInput, 'guidelineDocumentCo
   
   // Record which guideline files were used for this entry
   usedGuidelineFiles?: string[];
+  
+  // Fields for acceptance workflow
+  isAccepted?: boolean;
+  doctorsNote?: string;
 }

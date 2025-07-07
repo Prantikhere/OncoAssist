@@ -4,14 +4,17 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Download, CheckCircle, RefreshCw, Loader2 } from "lucide-react";
-import type { AllTreatmentInput, CancerTreatmentOutput } from "@/ai/flows"; // Assuming index.ts in flows
+import type { AllTreatmentInput, CancerTreatmentOutput } from "@/ai/flows";
 import jsPDF from 'jspdf';
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import React, { useState } from 'react';
 
 interface RecommendationDisplayProps {
-  formData: AllTreatmentInput | null; // formData now reflects AllTreatmentInput
+  formData: AllTreatmentInput | null;
   recommendationOutput: CancerTreatmentOutput | null;
-  onAccept: () => void;
+  onAccept: (doctorsNote: string) => void;
   onRegenerate: () => void;
   isFinalized: boolean;
   isRegenerating: boolean;
@@ -25,6 +28,8 @@ export function RecommendationDisplay({
   isFinalized,
   isRegenerating 
 }: RecommendationDisplayProps) {
+  const [doctorsNote, setDoctorsNote] = useState('');
+  
   if (!recommendationOutput || !formData) {
     return null;
   }
@@ -104,8 +109,8 @@ export function RecommendationDisplay({
   return (
     <Card className="mt-8 shadow-lg">
       <CardHeader>
-        <CardTitle className="text-2xl font-headline text-primary">NCCN Guideline Based Recommendation</CardTitle>
-        <CardDescription>The following is based on the provided case details and (simulated) guideline document content.</CardDescription>
+        <CardTitle className="text-2xl font-headline text-primary">Guideline Based Recommendation</CardTitle>
+        <CardDescription>The following is based on the provided case details and uploaded guideline document content.</CardDescription>
       </CardHeader>
       <CardContent>
         {noRecommendationReason && (
@@ -130,6 +135,22 @@ export function RecommendationDisplay({
             <p className="text-sm text-muted-foreground">Supporting References: {references}</p>
           </>
         )}
+        {!isFinalized && (
+            <>
+              <Separator className="my-6" />
+              <div className="space-y-2">
+                <Label htmlFor="doctors-note" className="text-lg font-semibold text-foreground/90">Doctor's Note</Label>
+                <Textarea 
+                  id="doctors-note"
+                  placeholder="Enter your clinical rationale or modifications for accepting this recommendation..."
+                  value={doctorsNote}
+                  onChange={(e) => setDoctorsNote(e.target.value)}
+                  className="min-h-[100px]"
+                />
+                 <p className="text-xs text-muted-foreground">A note is required to accept the recommendation.</p>
+              </div>
+            </>
+        )}
       </CardContent>
       <CardFooter className="flex justify-between items-center pt-6 bg-muted/50 p-4 border-t">
         <Button onClick={handleDownloadReport} variant="outline">
@@ -145,7 +166,7 @@ export function RecommendationDisplay({
             </div>
           ) : (
             <>
-              <Button onClick={onAccept}>
+              <Button onClick={() => onAccept(doctorsNote)} disabled={!doctorsNote.trim()}>
                 Accept
               </Button>
               <Button onClick={onRegenerate} variant="destructive" disabled={isRegenerating}>

@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FileText, UploadCloud, History, Menu, Stethoscope } from 'lucide-react';
+import { FileText, UploadCloud, History, Menu, Stethoscope, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/', label: 'Case Assessment', icon: FileText },
   { href: '/upload', label: 'Document Upload', icon: UploadCloud },
   { href: '/audit', label: 'Audit Trail', icon: History },
+  { href: '/accepted-recommendations', label: 'Accepted Cases', icon: CheckSquare },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
