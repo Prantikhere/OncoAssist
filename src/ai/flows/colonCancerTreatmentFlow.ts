@@ -95,7 +95,7 @@ const colonCancerTreatmentFlow = ai.defineFlow(
     if (!output) {
       return {
         recommendation: "Failed to generate a recommendation. The AI model may have not returned the expected output.",
-        references: "N/a",
+        references: "N/A",
         noRecommendationReason: "Error in AI model processing."
       };
     }
