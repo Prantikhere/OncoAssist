@@ -47,48 +47,63 @@ export function RecommendationDisplay({
     const leftMargin = 10;
     const contentWidth = doc.internal.pageSize.width - (leftMargin * 2);
 
-    const addText = (text: string, isBold = false, isTitle = false) => {
+    const addText = (text: string, isBold = false, isTitle = false, fontSize = 10) => {
       if (yPosition > pageHeight - bottomMargin) {
         doc.addPage();
         yPosition = 15;
       }
-      doc.setFontSize(isTitle ? 16 : (isBold ? 12 : 10));
+      doc.setFontSize(isTitle ? 16 : (isBold ? 12 : fontSize));
       doc.setFont(undefined, isBold || isTitle ? 'bold' : 'normal');
       const splitLines = doc.splitTextToSize(text, contentWidth);
       doc.text(splitLines, leftMargin, yPosition);
       yPosition += (splitLines.length * lineHeight);
       if (isTitle || isBold) yPosition += lineHeight * 0.5; // Extra space after titles/bold sections
     };
+
+    const addDetail = (label: string, value: any) => {
+        if (value === undefined || value === null || value === '') return;
+        const text = `${label}: ${typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value}`;
+        addText(text, false, false, 10);
+    };
     
     addText(`OncoAssist Treatment Recommendation Report`, false, true);
-    addText(`Generated: ${new Date().toLocaleString()}`, false);
+    addText(`Generated: ${new Date().toLocaleString()}`, false, false, 8);
     yPosition += lineHeight;
 
-    addText(`CASE DETAILS:`, true);
-    addText(`Cancer Type: ${formData.cancerType}`);
-    addText(`Diagnostic Confirmation: ${formData.diagnosticConfirmation}`);
-    addText(`Staging Evaluation: ${formData.stagingEvaluation}`);
-    addText(`Disease Extent: ${formData.diseaseExtent}`);
-    addText(`Surgical Procedure: ${formData.surgicalProcedure}`);
-    addText(`Lymph Node Assessment: ${formData.lymphNodeAssessment}`);
-    addText(`Post-Surgery Analysis: ${formData.postSurgeryAnalysis}`);
+    addText(`PATIENT CASE DETAILS`, true);
+    addDetail(`Cancer Type`, formData.cancerType);
+    addDetail(`Diagnostic Confirmation`, formData.diagnosticConfirmation);
+    addDetail(`Staging Evaluation`, formData.stagingEvaluation);
+    addDetail(`Disease Extent`, formData.diseaseExtent);
+    addDetail(`Surgical Procedure`, formData.surgicalProcedure);
+    addDetail(`Lymph Node Assessment`, formData.lymphNodeAssessment);
+    addDetail(`Post-Surgery Analysis`, formData.postSurgeryAnalysis);
     yPosition += lineHeight * 0.5;
 
-    addText(`REPORT FINDINGS:`, true);
-    addText(`Tumor Type: ${formData.tumorType}`);
-    addText(`Grade: ${formData.grade}`);
-    addText(`T Stage: ${formData.tStage}`);
-    addText(`N Stage: ${formData.nStage}`);
-    if (formData.cancerType === 'Colon Cancer' || formData.cancerType === 'Rectal Cancer') {
-      if (formData.tStage === 'T3' && formData.nStage === 'N0') { // Condition already in form
-         addText(`Vascular/Lymphatic Invasion: ${formData.vascularLymphaticInvasion ? 'Yes' : 'No'}`);
-      }
-    } else if (formData.vascularLymphaticInvasion !== undefined) { // For other cancer types if field was shown
-        addText(`Vascular/Lymphatic Invasion: ${formData.vascularLymphaticInvasion ? 'Yes' : 'No'}`);
-    }
+    addText(`REPORT FINDINGS`, true);
+    addDetail(`Tumor Type`, formData.tumorType);
+    addDetail(`Grade`, formData.grade);
+    addDetail(`T Stage`, formData.tStage);
+    addDetail(`N Stage`, formData.nStage);
+    addDetail(`Vascular/Lymphatic Invasion`, formData.vascularLymphaticInvasion);
     yPosition += lineHeight;
+    
+    if (formData.cancerType === 'Colon Cancer' && formData.diseaseExtent === 'Metastatic') {
+      addText(`METASTATIC DETAILS`, true);
+      addDetail(`Tumor Sidedness`, formData.tumorSidedness);
+      addDetail(`RAS Status`, formData.krasNrasHrasStatus);
+      addDetail(`BRAF Status`, formData.brafStatus);
+      addDetail(`HER2 Status`, formData.her2Status);
+      addDetail(`MSI Status`, formData.msiStatus);
+      addDetail(`NTRK Fusion`, formData.ntrkFusionStatus);
+      addDetail(`Treatment Intent`, formData.treatmentIntent);
+      addDetail(`Surgery Feasible`, formData.isSurgeryFeasible);
+      addDetail(`Fit for Intensive Therapy`, formData.isFitForIntensiveTherapy);
+      yPosition += lineHeight;
+    }
 
-    addText(`RECOMMENDATION:`, true);
+
+    addText(`RECOMMENDATION`, true);
     if (noRecommendationReason) {
       addText(`Note: ${noRecommendationReason}`);
       yPosition += lineHeight * 0.5;
@@ -97,7 +112,7 @@ export function RecommendationDisplay({
     yPosition += lineHeight;
 
     if (references && references !== "N/A" && references !== "No specific references extracted.") {
-      addText(`SUPPORTING REFERENCES FROM GUIDELINE DOCUMENT:`, true);
+      addText(`SUPPORTING REFERENCES FROM GUIDELINE DOCUMENT`, true);
       addText(references);
     } else if (references) {
        addText(`Supporting References: ${references}`, false);
