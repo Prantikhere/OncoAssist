@@ -13,12 +13,9 @@ export function GoogleAnalytics() {
 
   useEffect(() => {
     if (!GA_MEASUREMENT_ID) {
-      // console.warn("Google Analytics Measurement ID is not set. Analytics disabled.");
       return;
     }
-    // Check if gtag is available (it should be after the scripts load)
     if (typeof window.gtag !== 'function') {
-        // console.warn("window.gtag not available for pageview tracking yet.");
         return;
     }
 
@@ -26,6 +23,8 @@ export function GoogleAnalytics() {
     
     window.gtag("config", GA_MEASUREMENT_ID, {
       page_path: url,
+      transport_url: 'https://www.google-analytics.com/g/collect',
+      first_party_collection: true
     });
   }, [pathname, searchParams]);
 
@@ -49,6 +48,8 @@ export function GoogleAnalytics() {
             gtag('js', new Date());
             gtag('config', '${GA_MEASUREMENT_ID}', {
               page_path: window.location.pathname,
+              transport_url: 'https://www.google-analytics.com/g/collect',
+              first_party_collection: true
             });
           `,
         }}
